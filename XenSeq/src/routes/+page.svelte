@@ -1,10 +1,12 @@
 <script lang="ts">
+    import tippy from 'tippy.js';
+
     import ScaleZoneSlider from "./scale_zone_slider.svelte";
     import NoteLine from "./note.svelte";
     import KeyLineComponent from "./key_line.svelte";
+    import Sidebar from './sidebar.svelte';
 
     // NEXT THINGS TO DO:
-    // 1) create brief information segment
     // 2) toggle button for viewing cents of all notes in scale zone
     //        OR viewing cents only of selected notes
 
@@ -199,6 +201,21 @@
             }
         }
     }
+
+
+    // @ts-ignore
+    function tooltip(node, options) {
+        const instance = tippy(node, options);
+        return {
+            destroy() {
+                //@ts-ignore
+                instance.destroy();
+            }
+        };
+    }
+
+
+    let sidebar_is_opened = $state(false);
 </script>
 
 
@@ -207,6 +224,11 @@
 <div id="entered_number_sign" style="--opacity: {show_entered_number ? 1 : 0}">
     {entered_number}
 </div>
+
+<svelte:head>
+	<link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet"/>
+</svelte:head>
+<Sidebar bind:open={sidebar_is_opened}/>
 
 <div id = "sequencer">
     <div id = "scale_zones_and_timeline_wrapper">
@@ -253,7 +275,7 @@
             </div>
         </div>
         
-        <div id = "panel_wrapper" bind:this={panel_wrapper} onscroll={handleScroll}>
+        <div id = "panel_raw_wrapper" bind:this={panel_wrapper} onscroll={handleScroll}>
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div id = "panel" style="height: {num_octaves*octave_height_px}px; width: {num_measures*measure_width_px}px"
             oncontextmenu={(e) => {e.preventDefault();}}>
@@ -297,10 +319,35 @@
             </div>
         </div>
     </div>
+
+    <div id = "bottom_panel_wrapper">
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div id = "help_icon" use:tooltip={{ content: 'Show help' }} onclick={() => {sidebar_is_opened = !sidebar_is_opened}}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"/>
+            </svg>
+        </div>
+    </div>
 </div>
 
 
 <style>
+    :global {
+		[data-tippy-root] {
+			--bg: #707070;
+			background-color: var(--bg);
+			color: #dcdcdc;
+			border-radius: 0.2rem;
+			padding: 0.2rem 0.6rem;
+			filter: drop-shadow(1px 1px 3px rgb(0 0 0 / 0.1));
+			* {
+				transition: none;
+			}
+		}
+	}
+
     #entered_number_sign {
         z-index: 10;
         min-width: 50px;
@@ -366,7 +413,7 @@
         margin-left: 5px;
     }
 
-    #panel_wrapper {
+    #panel_raw_wrapper {
         height: 600px;
         overflow: auto;
         scrollbar-color: #676e7a #35363a;
@@ -375,4 +422,20 @@
     #panel {
         background-color: #45474c;
     }
+
+    #bottom_panel_wrapper {
+        margin-top: 10px;
+        margin-left: 5px;
+        margin-right: 5px;
+        padding: 5px;
+        display: flex;
+        background-color: #45474c;
+        height: 40px;
+        box-sizing: border-box;
+    }
+
+    #help_icon {
+        cursor: pointer;
+    }
+
 </style>
