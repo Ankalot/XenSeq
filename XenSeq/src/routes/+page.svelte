@@ -4,8 +4,8 @@
     import KeyLineComponent from "./key_line.svelte";
 
     // NEXT THINGS TO DO:
-    // 1) input cents of note with keyboard (when 1 note is selected)
-    // 2) create brief information segment + toggle button for viewing cents of all notes in scale zone
+    // 1) create brief information segment
+    // 2) toggle button for viewing cents of all notes in scale zone
     //        OR viewing cents only of selected notes
 
     type Note = {x_start: number; y_start: number; length: number, selected: boolean};
@@ -137,18 +137,76 @@
     }
 
 
+    // ===================
+    // ==== KEYBOARD  ====
+    // ===================
+
+    let entered_number = $state('');
+    let show_entered_number = $state(false);
+    let entered_number_timeout: number | undefined;
+
+    function fadeEnteredNumber() {
+        show_entered_number = false;
+        clearTimeout(entered_number_timeout);
+        entered_number = '';
+    }
+
+    function showEnteredNumber() {
+        show_entered_number = true;
+
+        clearTimeout(entered_number_timeout);
+        entered_number_timeout = setTimeout(() => {
+            fadeEnteredNumber();
+        }, 3000);
+    }
+
+    function ClampValue(x: number, a:number, b:number) {
+        return Math.min(Math.max(x, a), b);
+    }
+
     // @ts-ignore
     function handleKeydown(event) {
         if (event.code === "Delete") {
             notes = notes.filter(note => !note.selected);
         } else if (event.code == "Escape") {
             notes.forEach(note => note.selected = false);
+            fadeEnteredNumber();
+        }
+
+        // set cents of selected note(-s)
+        if (notes.some(note => note.selected)) {
+            if (event.key >= '0' && event.key <= '9' || event.key === ".") {
+                entered_number += event.key;
+                showEnteredNumber();
+            }
+            if (event.key === "Enter") {
+                const cents = Number(entered_number)
+                if (isFinite(cents)) {
+                    notes.forEach(note => {
+                        if (note.selected) {
+                            note.y_start = ClampValue(
+                                Math.floor((note.y_start-0.0001)/octave_height_px + 1)*octave_height_px - 
+                                (cents % 1200)/1200*octave_height_px,
+                                0, num_octaves*octave_height_px
+                            );
+                        }
+                    })
+                    fadeEnteredNumber();
+                }
+            }
+            if (event.key === "Backspace") {
+                entered_number = entered_number.slice(0, -1);
+            }
         }
     }
 </script>
 
 
 <svelte:window onkeydown={handleKeydown} />
+
+<div id="entered_number_sign" style="--opacity: {show_entered_number ? 1 : 0}">
+    {entered_number}
+</div>
 
 <div id = "sequencer">
     <div id = "scale_zones_and_timeline_wrapper">
@@ -243,6 +301,21 @@
 
 
 <style>
+    #entered_number_sign {
+        z-index: 10;
+        min-width: 50px;
+        position: absolute;
+        top: 20%;
+        left: 50%;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: #c3c3c3;
+        padding: 20px;
+        border-radius: 8px;
+        transition: opacity 1s ease-in-out;
+        opacity: var(--opacity); /* Fade in/out */
+        pointer-events: none; /* Prevent interaction */
+    }
+
     #scale_zones_and_timeline_wrapper {
         display: flex;
         overflow: hidden;
