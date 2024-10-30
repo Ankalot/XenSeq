@@ -4,7 +4,7 @@
     export let min_val = 0;
     export let max_val = 100;
 
-    let values = [min_val, max_val];
+    export let values = [min_val, max_val];
 </script>
 
 

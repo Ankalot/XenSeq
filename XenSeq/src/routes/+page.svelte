@@ -6,9 +6,6 @@
     import KeyLineComponent from "./key_line.svelte";
     import Sidebar from './sidebar.svelte';
 
-    // NEXT THINGS TO DO:
-    // 2) toggle button for viewing cents of all notes in scale zone
-    //        OR viewing cents only of selected notes
 
     type Note = {x_start: number; y_start: number; length: number, selected: boolean};
     let notes: Note[] = $state([]);
@@ -25,17 +22,7 @@
 
     let min_note_length = measure_width_px/32;
 
-    type KeyLine = {y_px: number, cents: number};
-    let keyLines: KeyLine[] = $derived(
-        notes.filter(note => note.selected).map(({x_start, y_start, length, selected}) => ({
-            y_px: y_start,
-            cents: (num_octaves*octave_height_px - y_start) % octave_height_px / octave_height_px * 1200
-        })).filter((obj, index, self) =>
-            index === self.findIndex((t) => t.y_px === obj.y_px)
-        )
-    )
-
-
+    
     let scale_zones_and_timeline_movable: HTMLDivElement;
     let keyboard: HTMLDivElement;
     let panel_wrapper: HTMLDivElement;
@@ -216,6 +203,34 @@
 
 
     let sidebar_is_opened = $state(false);
+    let scale_zone_cents_active = $state(false);
+
+
+    let scale_zone_min = 0;
+    let scale_zone_max = $derived(num_measures*16);
+    let scale_zone_range = $state([scale_zone_min, scale_zone_max]);
+    let scale_zone_factor = $derived(num_measures*measure_width_px/scale_zone_max);
+
+    type KeyLine = {y_px: number, cents: number};
+    let keyLines: KeyLine[] = $derived(
+        (scale_zone_cents_active ? 
+            notes.filter(note => (note.x_start + note.length > scale_zone_factor*scale_zone_range[0]
+                 && note.x_start < scale_zone_factor*scale_zone_range[1])).
+            map(({x_start, y_start, length, selected}) => ({
+                y_px: y_start,
+                cents: (num_octaves*octave_height_px - y_start) % octave_height_px / octave_height_px * 1200
+            })).filter((obj, index, self) =>
+                index === self.findIndex((t) => t.y_px === obj.y_px)
+            )
+        :
+            notes.filter(note => note.selected).map(({x_start, y_start, length, selected}) => ({
+                y_px: y_start,
+                cents: (num_octaves*octave_height_px - y_start) % octave_height_px / octave_height_px * 1200
+            })).filter((obj, index, self) =>
+                index === self.findIndex((t) => t.y_px === obj.y_px)
+            )
+        )
+    )
 </script>
 
 
@@ -235,7 +250,8 @@
         <div id = "blank"></div>
         <div id = "scale_zones_and_timeline_movable" bind:this={scale_zones_and_timeline_movable}>
             <div id = "scale_zone_slider_wrapper">
-                <ScaleZoneSlider min_val={0} max_val={num_measures*8}/>
+                <ScaleZoneSlider min_val={scale_zone_min} max_val={scale_zone_max} 
+                bind:values={scale_zone_range}/>
             </div>
             <div id = "timeline">
                 {#each Array.from({ length: num_measures }) as _, index}
@@ -323,10 +339,24 @@
     <div id = "bottom_panel_wrapper">
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div id = "help_icon" use:tooltip={{ content: 'Show help' }} onclick={() => {sidebar_is_opened = !sidebar_is_opened}}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 16 16">
+        <div class = "bottom_panel_button"
+        use:tooltip={{ content: 'Show help' }}
+        onclick={() => {sidebar_is_opened = !sidebar_is_opened}}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 16 16"
+            class="{sidebar_is_opened ? 'active_button' : ''}">
                 <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
                 <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"/>
+            </svg>
+        </div>
+
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class = "bottom_panel_button"
+        use:tooltip={{ content: 'Show cents of notes in scale zone' }}
+        onclick={() => {scale_zone_cents_active = !scale_zone_cents_active}}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 20 20" 
+            class="{scale_zone_cents_active ? 'active_button' : ''}">
+                <path d="M18-.0004c1.104 0 2 .896 2 2v16c0 1.0004-.896 2-2 2H2c-1.104 0-2-.895-2-2v-16c0-1.104.896-2 2-2h16m-16 3v2.201l3.272-3.201H3c-.552 0-1 .448-1 1Zm0 5.03v2.828l8.929-8.858h-2.828l-6.101 6.03Zm0 5.657v2.828l14.586-14.515h-2.829L2 13.6866Zm16 3.313v-2.343l-3.272 3.343H17c.552 0 1-.447 1-1Zm0-5.171v-2.829l-8.929 9h2.828l6.101-6.171Zm0-5.657v-2.828l-14.586 14.656h2.829L18 6.1716Z"/>
             </svg>
         </div>
     </div>
@@ -434,8 +464,12 @@
         box-sizing: border-box;
     }
 
-    #help_icon {
+    .bottom_panel_button {
         cursor: pointer;
+        margin-right: 15px;
     }
 
+    .active_button {
+        fill: #22b14d;
+    }
 </style>
