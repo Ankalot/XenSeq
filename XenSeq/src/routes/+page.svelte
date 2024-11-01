@@ -6,6 +6,10 @@
     import KeyLineComponent from "./key_line.svelte";
     import Sidebar from './sidebar.svelte';
 
+    // TODO:
+    // Refactor: Note should have cents and octave values and time, not x and y.
+    //           Define functions for transformations: y -> cents, cents -> y, x -> time, time -> x
+
 
     type Note = {x_start: number; y_start: number; length: number, selected: boolean};
     let notes: Note[] = $state([]);
@@ -22,6 +26,17 @@
 
     let min_note_length = measure_width_px/32;
 
+
+    let keys_from_notes: number[] = $derived(
+        notes.filter(note => (note.x_start + note.length > scale_zone_factor*scale_zone_range[0]
+                                  && note.x_start < scale_zone_factor*scale_zone_range[1])).
+        map(({x_start, y_start, length, selected}) => ({
+            cents: (num_octaves*octave_height_px - y_start) % octave_height_px / octave_height_px * 1200
+        })).filter((obj, index, self) =>
+            index === self.findIndex((t) => t.cents === obj.cents)
+        ).map(item => item.cents).sort((a, b) => a - b)
+    );
+
     
     let scale_zones_and_timeline_movable: HTMLDivElement;
     let keyboard: HTMLDivElement;
@@ -36,6 +51,12 @@
     }
 
 
+    const closestValue = (arr: number[], x: number) => {
+        return arr.reduce((prev, curr) => {
+            return (Math.abs(curr - x) < Math.abs(prev - x) ? curr : prev);
+        });
+    };
+
     // @ts-ignore
     function handlePanelMouseDown(event) {
         if (event.button == 0) {
@@ -43,7 +64,17 @@
             const svg = event.currentTarget;
             const rect = svg.getBoundingClientRect();
             const x = event.clientX - rect.left; // Calculate x position relative to SVG
-            const y = event.clientY - rect.top;  // Calculate y position relative to SVG
+            let y = Math.round(event.clientY - rect.top);  // Calculate y position relative to SVG
+
+            if (keys_from_notes_active && keys_from_notes.length != 0) {
+                const cents_y = (num_octaves*octave_height_px - y)%octave_height_px*1200/octave_height_px;
+                const cents_key = closestValue(keys_from_notes, cents_y);
+
+                const octave = Math.floor((num_octaves*octave_height_px - y)/octave_height_px);
+                
+                y = Math.round(num_octaves*octave_height_px - octave*octave_height_px - cents_key/1200*octave_height_px);
+            }
+
             notes.push({x_start: x, y_start: y, length: measure_width_px/4, selected: false});
         }
     }
@@ -204,6 +235,8 @@
 
     let sidebar_is_opened = $state(false);
     let scale_zone_cents_active = $state(false);
+    let keys_from_notes_active = $state(false);
+    let keys_new_from_scale_zone_active = $state(false);
 
 
     let scale_zone_min = 0;
@@ -265,12 +298,12 @@
         <div id = "keyboard_wrapper">
             <div id = "keyboard" style = "height: {num_octaves*octave_height_px}px;"
                     bind:this={keyboard} onscroll={handleScroll}>
-                <svg width={100} height={num_octaves*octave_height_px}>
+                <svg width={120} height={num_octaves*octave_height_px}>
                     {#each Array(num_octaves+1) as _, index}
                         <line 
                             x1="0" 
                             y1={index * octave_height_px} 
-                            x2={100} 
+                            x2={120} 
                             y2={index * octave_height_px} 
                             stroke=#2c2d30 
                             stroke-width="3"
@@ -284,9 +317,18 @@
                         </text>
                     {/each}
 
-                    {#each keyLines as {y_px, cents}, index}
-                        <KeyLineComponent y_px={y_px} cents={cents} len_px={20} keyboard={true}/>
-                    {/each}
+                    {#if keys_from_notes_active}
+                        {#each Array.from({ length: num_octaves }) as _, octave}
+                            {#each keys_from_notes as key, index}
+                                <KeyLineComponent y_px={(num_octaves - octave-key/1200)*octave_height_px}
+                                 cents={key} len_px={20} keyboard={true} text_shift={-40*(index%2)}/>
+                            {/each}
+                        {/each}
+                    {:else}
+                        {#each keyLines as {y_px, cents}, index}
+                            <KeyLineComponent y_px={y_px} cents={cents} len_px={20} keyboard={true}/>
+                        {/each}
+                    {/if}
                 </svg>
             </div>
         </div>
@@ -320,9 +362,18 @@
                         />
                     {/each}
 
-                    {#each keyLines as {y_px, cents}, index}
-                        <KeyLineComponent y_px={y_px} cents={cents} len_px={num_measures*measure_width_px} keyboard={false}/>
-                    {/each}
+                    {#if keys_from_notes_active}
+                        {#each Array.from({ length: num_octaves }) as _, octave}
+                            {#each keys_from_notes as key, index}
+                                <KeyLineComponent y_px={(num_octaves - octave-key/1200)*octave_height_px}
+                                cents={key} len_px={num_measures*measure_width_px} keyboard={false}/>
+                            {/each}
+                        {/each}
+                    {:else}
+                        {#each keyLines as {y_px, cents}, index}
+                            <KeyLineComponent y_px={y_px} cents={cents} len_px={num_measures*measure_width_px} keyboard={false}/>
+                        {/each}
+                    {/if}
 
                     {#each notes as {x_start, y_start, length, selected}, index}
                         <NoteLine note_x_px={x_start} note_y_px={y_start} note_length={length} selected={selected}
@@ -353,12 +404,56 @@
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class = "bottom_panel_button"
         use:tooltip={{ content: 'Show cents of notes in scale zone' }}
-        onclick={() => {scale_zone_cents_active = !scale_zone_cents_active}}>
+        onclick={() => {
+            scale_zone_cents_active = !scale_zone_cents_active
+            if (scale_zone_cents_active) {
+                keys_from_notes_active = false
+                keys_new_from_scale_zone_active = false
+            }
+        }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 20 20" 
             class="{scale_zone_cents_active ? 'active_button' : ''}">
                 <path d="M18-.0004c1.104 0 2 .896 2 2v16c0 1.0004-.896 2-2 2H2c-1.104 0-2-.895-2-2v-16c0-1.104.896-2 2-2h16m-16 3v2.201l3.272-3.201H3c-.552 0-1 .448-1 1Zm0 5.03v2.828l8.929-8.858h-2.828l-6.101 6.03Zm0 5.657v2.828l14.586-14.515h-2.829L2 13.6866Zm16 3.313v-2.343l-3.272 3.343H17c.552 0 1-.447 1-1Zm0-5.171v-2.829l-8.929 9h2.828l6.101-6.171Zm0-5.657v-2.828l-14.586 14.656h2.829L18 6.1716Z"/>
             </svg>
         </div>
+
+        <span class="vertical_separator"></span>
+        <h style="margin-right: 15px;"
+        use:tooltip={{ content: 'Create notes using keys' }}>Define keys:</h>
+
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class = "bottom_panel_button"
+        use:tooltip={{ content: 'Use notes from scale zone' }}
+        onclick={() => {
+            keys_from_notes_active = !keys_from_notes_active
+            if (keys_from_notes_active) {
+                scale_zone_cents_active = false
+            }
+        }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 21" 
+            class="{keys_from_notes_active ? 'active_button' : ''}">
+                <path d="M0 3 7 3 7 0 23 0 23 3 30 3 30 5 23 5 23 8 7 8 7 5 0 5M0 17 7 17 7 14 23 14 23 17 30 17 30 19 23 19 23 22 7 22 7 19 0 19"/>
+            </svg>
+        </div>
+
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!--
+        <div class = "bottom_panel_button"
+        use:tooltip={{ content: 'Create new keys in scale zone' }}
+        onclick={() => {
+            keys_new_from_scale_zone_active = !keys_new_from_scale_zone_active
+            if (keys_new_from_scale_zone_active) {
+                scale_zone_cents_active = false
+            }
+        }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 22" 
+            class="{keys_new_from_scale_zone_active ? 'active_button' : ''}">
+                <path d="M7 8 7 0 23 0 23 8M7 22 7 14 23 14 23 22M0 12 0 10 30 10 30 12"/>
+            </svg>
+        </div>
+        -->
     </div>
 </div>
 
@@ -399,7 +494,7 @@
     }
 
     #blank {
-        width: 100px;
+        width: 120px;
         flex-shrink: 0;
         z-index: 1;
         background-color: #35363a;
@@ -431,7 +526,7 @@
     }
 
     #keyboard_wrapper {
-        width: 100px;
+        width: 120px;
         flex-shrink: 0;
         height: 600px;
         overflow: hidden;
@@ -471,5 +566,12 @@
 
     .active_button {
         fill: #22b14d;
+    }
+
+    .vertical_separator {
+        display: inline-block; /* Allows setting width and height */
+        border: 3px solid #35363a; /* Vertical line style */
+        height: auto; /* Desired height */
+        margin-right: 15px;
     }
 </style>
