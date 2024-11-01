@@ -18,12 +18,12 @@
 
 <style>
     :root {
-        --range-slider:            #35363a;
-        --range-handle-inactive:   #c3c3c3;
-        --range-handle:            #c3c3c3;
-        --range-handle-focus:      #c3c3c3;
-        --range-handle-border:     #c3c3c3;
-        --range-range-inactive:    #c3c3c3;
-        --range-range:             #c3c3c3;
+        --range-slider:            var(--background-dark);
+        --range-handle-inactive:   var(--light);
+        --range-handle:            var(--light);
+        --range-handle-focus:      var(--light);
+        --range-handle-border:     var(--light);
+        --range-range-inactive:    var(--light);
+        --range-range:             var(--light);
     }
 </style>

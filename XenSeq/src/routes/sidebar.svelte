@@ -20,7 +20,7 @@
 		transition: opacity 0.2s ease-in-out, visibility 0.2s 0.2s;
         width: 500px;
         z-index: 100;
-        background-color: #35363a;
+        background-color: var(--background-medium);
         padding: 20px;
         opacity: 0;
         visibility: hidden;

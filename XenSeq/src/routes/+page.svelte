@@ -7,37 +7,74 @@
     import Sidebar from './sidebar.svelte';
 
     // TODO:
-    // Refactor: Note should have cents and octave values and time, not x and y.
-    //           Define functions for transformations: y -> cents, cents -> y, x -> time, time -> x
+    // 1) change note dragging while on keys from notes mode
 
+    const num_octaves = 3;
+    const octave_height_px = 300;
 
-    type Note = {x_start: number; y_start: number; length: number, selected: boolean};
+    const num_measures_min = 6;
+    const measure_width_px = 300;
+
+    const min_note_duration = 1/32;
+    const default_note_duration = 1/4;
+
+    type Note = {
+        octave: number,   // [0; num_octaves-1]  int       in number
+        cents: number,    // [0; 1200)           float     in cents
+        time: number,     // [0; num_measures]   float     in measures
+        duration: number, // (0; ...)            float     in measures
+        selected: boolean
+    }
     let notes: Note[] = $state([]);
 
-    let num_octaves = 3;
-    let octave_height_px = 300;
+    function cents2y(cents: number, octave?: number): number {
+        if (octave !== undefined) {
+            return (num_octaves - (octave + cents/1200))*octave_height_px;
+        } else {
+            return (num_octaves - cents/1200)*octave_height_px;
+        }
+    }
 
-    let num_measures_min = 6;
-    let measure_width_px = 300;
+    function y2cents(y: number): number {
+        return (num_octaves*octave_height_px - y)%octave_height_px*1200/octave_height_px;
+    }
 
-    let num_measures = $derived(Math.max(num_measures_min, 
-        Math.floor(notes.reduce((max, curr) => (curr.x_start > max ? curr.x_start : max), 0) / measure_width_px) + 3)
+    function y2octave(y: number): number {
+        return Math.floor((num_octaves*octave_height_px - y)/octave_height_px);
+    }
+
+    function time2x(time: number): number {
+        return time*measure_width_px;
+    }
+
+    function x2time(x: number): number {
+        return x/measure_width_px;
+    }
+
+    let num_measures = $derived(
+        Math.max(
+            num_measures_min,
+            Math.floor(
+                notes.reduce(
+                    (max, curr) => (time2x(curr.time) > max ? time2x(curr.time) : max),
+                    0
+                ) / measure_width_px
+            ) + 3
+        )
     );
 
-    let min_note_length = measure_width_px/32;
 
-
+    // is used when keys_from_notes_active == true; array of cents
     let keys_from_notes: number[] = $derived(
-        notes.filter(note => (note.x_start + note.length > scale_zone_factor*scale_zone_range[0]
-                                  && note.x_start < scale_zone_factor*scale_zone_range[1])).
-        map(({x_start, y_start, length, selected}) => ({
-            cents: (num_octaves*octave_height_px - y_start) % octave_height_px / octave_height_px * 1200
-        })).filter((obj, index, self) =>
-            index === self.findIndex((t) => t.cents === obj.cents)
-        ).map(item => item.cents).sort((a, b) => a - b)
+        notes
+        .filter(note => (time2x(note.time + note.duration) > scale_zone_factor*scale_zone_range[0]
+                         && time2x(note.time) < scale_zone_factor*scale_zone_range[1]))
+        .filter((obj, index, self) =>
+            index === self.findIndex((t) => t.cents === obj.cents))
+        .map(item => item.cents).sort((a, b) => a - b)
     );
 
-    
+
     let scale_zones_and_timeline_movable: HTMLDivElement;
     let keyboard: HTMLDivElement;
     let panel_wrapper: HTMLDivElement;
@@ -57,25 +94,24 @@
         });
     };
 
-    // @ts-ignore
-    function handlePanelMouseDown(event) {
+    function handlePanelMouseDown(event: MouseEvent) {
         if (event.button == 0) {
             notes.forEach(note => note.selected=false);
-            const svg = event.currentTarget;
+            const svg = event.currentTarget as SVGElement;
             const rect = svg.getBoundingClientRect();
             const x = event.clientX - rect.left; // Calculate x position relative to SVG
-            let y = Math.round(event.clientY - rect.top);  // Calculate y position relative to SVG
+            const y = event.clientY - rect.top;  // Calculate y position relative to SVG
 
             if (keys_from_notes_active && keys_from_notes.length != 0) {
-                const cents_y = (num_octaves*octave_height_px - y)%octave_height_px*1200/octave_height_px;
+                const cents_y = y2cents(y);
                 const cents_key = closestValue(keys_from_notes, cents_y);
-
-                const octave = Math.floor((num_octaves*octave_height_px - y)/octave_height_px);
-                
-                y = Math.round(num_octaves*octave_height_px - octave*octave_height_px - cents_key/1200*octave_height_px);
+                const octave = y2octave(y);
+                notes.push({octave: octave, cents: cents_key, time: x2time(x),
+                             duration: default_note_duration, selected: false});
+            } else {
+                notes.push({octave: y2octave(y), cents: y2cents(y), time: x2time(x),
+                             duration: default_note_duration, selected: false});
             }
-
-            notes.push({x_start: x, y_start: y, length: measure_width_px/4, selected: false});
         }
     }
 
@@ -96,29 +132,34 @@
     function startNoteDragging(i: number, x: number, y: number) {
         const selectedNotes = notes.filter(note => note.selected);
         
-        // @ts-ignore
-        function mouseMoveHandler(moveEvent) {
+        function mouseMoveHandler(moveEvent: MouseEvent) {
             const dx = moveEvent.clientX - x;
             const dy = moveEvent.clientY - y;
 
             selectedNotes.forEach(note => {
-                note.x_start += dx;
-                if (note.x_start < 0)
-                    note.x_start = 0;
-                else if (note.x_start + note.length > num_measures*measure_width_px)
-                    note.x_start = num_measures*measure_width_px - note.length;
-                note.y_start += dy;
-                if (note.y_start < 10)
-                    note.y_start = 10;
-                else if (note.y_start + 10 > num_octaves*octave_height_px)
-                    note.y_start = num_octaves*octave_height_px - 10;
+                note.time = x2time(time2x(note.time) + dx);
+
+                if (note.time < 0) {
+                    note.time = 0;
+                }
+
+                const new_y = cents2y(note.cents, note.octave) + dy;
+                note.cents = y2cents(new_y);
+                note.octave = y2octave(new_y);
+
+                if (note.octave < 0) {
+                    note.octave = 0;
+                    note.cents = 0;
+                } else if (note.octave > num_octaves - 1) {
+                    note.octave = num_octaves - 1;
+                    note.cents = 1199;
+                }
             });
 
             x = moveEvent.clientX;
             y = moveEvent.clientY;
         }
 
-        // @ts-ignore
         function mouseUpHandler() {
             window.removeEventListener('mousemove', mouseMoveHandler);
             window.removeEventListener('mouseup', mouseUpHandler);
@@ -132,21 +173,19 @@
     function startNoteResizing(i: number, x: number) {       
         const selectedNotes = notes.filter(note => note.selected);
         
-        // @ts-ignore
-        function mouseMoveHandler(moveEvent) {
+        function mouseMoveHandler(moveEvent: MouseEvent) {
             const dx = moveEvent.clientX - x;
 
             selectedNotes.forEach(note => {
-                note.length += dx;
-                if (note.length < min_note_length) {
-                    note.length = min_note_length;
+                note.duration += x2time(dx);
+                if (note.duration < min_note_duration) {
+                    note.duration = min_note_duration;
                 }
             });
 
             x = moveEvent.clientX;
         }
 
-        // @ts-ignore
         function mouseUpHandler() {
             window.removeEventListener('mousemove', mouseMoveHandler);
             window.removeEventListener('mouseup', mouseUpHandler);
@@ -180,15 +219,12 @@
         }, 3000);
     }
 
-    function ClampValue(x: number, a:number, b:number) {
-        return Math.min(Math.max(x, a), b);
-    }
-
-    // @ts-ignore
-    function handleKeydown(event) {
+    function handleKeydown(event: KeyboardEvent) {
         if (event.code === "Delete") {
             notes = notes.filter(note => !note.selected);
-        } else if (event.code == "Escape") {
+        } 
+        
+        if (event.code == "Escape") {
             notes.forEach(note => note.selected = false);
             fadeEnteredNumber();
         }
@@ -199,21 +235,23 @@
                 entered_number += event.key;
                 showEnteredNumber();
             }
+
             if (event.key === "Enter") {
                 const cents = Number(entered_number)
                 if (isFinite(cents)) {
                     notes.forEach(note => {
                         if (note.selected) {
-                            note.y_start = ClampValue(
-                                Math.floor((note.y_start-0.0001)/octave_height_px + 1)*octave_height_px - 
-                                (cents % 1200)/1200*octave_height_px,
-                                0, num_octaves*octave_height_px
-                            );
+                            note.cents = cents % 1200;
+                            note.octave += Math.floor(cents/1200);
+                            if (note.octave > num_octaves - 1) {
+                                note.octave = num_octaves - 1;
+                            }
                         }
                     })
-                    fadeEnteredNumber();
                 }
+                fadeEnteredNumber();
             }
+
             if (event.key === "Backspace") {
                 entered_number = entered_number.slice(0, -1);
             }
@@ -221,12 +259,10 @@
     }
 
 
-    // @ts-ignore
-    function tooltip(node, options) {
+    function tooltip(node: HTMLElement, options: {content: string}) {
         const instance = tippy(node, options);
         return {
             destroy() {
-                //@ts-ignore
                 instance.destroy();
             }
         };
@@ -241,27 +277,27 @@
 
     let scale_zone_min = 0;
     let scale_zone_max = $derived(num_measures*16);
+    // svelte-ignore state_referenced_locally
     let scale_zone_range = $state([scale_zone_min, scale_zone_max]);
     let scale_zone_factor = $derived(num_measures*measure_width_px/scale_zone_max);
 
     type KeyLine = {y_px: number, cents: number};
+    // is used for selected notes or "show cents of notes in scale zone" mode
     let keyLines: KeyLine[] = $derived(
         (scale_zone_cents_active ? 
-            notes.filter(note => (note.x_start + note.length > scale_zone_factor*scale_zone_range[0]
-                 && note.x_start < scale_zone_factor*scale_zone_range[1])).
-            map(({x_start, y_start, length, selected}) => ({
-                y_px: y_start,
-                cents: (num_octaves*octave_height_px - y_start) % octave_height_px / octave_height_px * 1200
-            })).filter((obj, index, self) =>
-                index === self.findIndex((t) => t.y_px === obj.y_px)
+            notes.filter(note => (
+                    time2x(note.time + note.duration) > scale_zone_factor*scale_zone_range[0]
+                    && time2x(note.time) < scale_zone_factor*scale_zone_range[1]
+                )
             )
         :
-            notes.filter(note => note.selected).map(({x_start, y_start, length, selected}) => ({
-                y_px: y_start,
-                cents: (num_octaves*octave_height_px - y_start) % octave_height_px / octave_height_px * 1200
-            })).filter((obj, index, self) =>
-                index === self.findIndex((t) => t.y_px === obj.y_px)
-            )
+            notes.filter(note => note.selected)
+        )
+        .map(({octave, cents, time, duration, selected}) => ({
+            y_px: cents2y(cents, octave),
+            cents: cents}))
+        .filter((obj, index, self) =>
+            index === self.findIndex((t) => t.y_px === obj.y_px)
         )
     )
 </script>
@@ -305,13 +341,13 @@
                             y1={index * octave_height_px} 
                             x2={120} 
                             y2={index * octave_height_px} 
-                            stroke=#2c2d30 
+                            stroke="var(--very-dark)" 
                             stroke-width="3"
                         />
                     {/each}
 
                     {#each Array(num_octaves) as _, index}
-                        <text x="18" y="{octave_height_px * (0.5 + index)}" fill=#2c2d30
+                        <text x="18" y="{octave_height_px * (0.5 + index)}" fill="var(--very-dark)"
                         text-anchor="middle" transform="rotate(-90, 18, {octave_height_px * (0.5 + index)})">
                             {"OCTAVE " + (num_octaves - index - 1)}
                         </text>
@@ -346,7 +382,7 @@
                             y1={index * octave_height_px} 
                             x2={num_measures * measure_width_px} 
                             y2={index * octave_height_px} 
-                            stroke=#2c2d30
+                            stroke="var(--very-dark)"
                             stroke-width="3"
                         />
                     {/each}
@@ -357,7 +393,7 @@
                             y1={0} 
                             x2={index * measure_width_px} 
                             y2={num_octaves*octave_height_px} 
-                            stroke=#2c2d30
+                            stroke="var(--very-dark)"
                             stroke-width="3"
                         />
                     {/each}
@@ -375,8 +411,9 @@
                         {/each}
                     {/if}
 
-                    {#each notes as {x_start, y_start, length, selected}, index}
-                        <NoteLine note_x_px={x_start} note_y_px={y_start} note_length={length} selected={selected}
+                    {#each notes as {octave, cents, time, duration, selected}, index}
+                        <NoteLine note_x_px={time2x(time)} note_y_px={cents2y(cents, octave)}
+                        note_length={time2x(duration)} selected={selected}
                             removeNote = {() => removeNote(index)}
                             selectNote = {(shiftKey) => selectNote(index, shiftKey)}
                             startDragging = {(x, y) => startNoteDragging(index, x, y)}
@@ -387,9 +424,9 @@
         </div>
     </div>
 
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div id = "bottom_panel_wrapper">
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class = "bottom_panel_button"
         use:tooltip={{ content: 'Show help' }}
         onclick={() => {sidebar_is_opened = !sidebar_is_opened}}>
@@ -400,15 +437,13 @@
             </svg>
         </div>
 
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class = "bottom_panel_button"
         use:tooltip={{ content: 'Show cents of notes in scale zone' }}
         onclick={() => {
-            scale_zone_cents_active = !scale_zone_cents_active
+            scale_zone_cents_active = !scale_zone_cents_active;
             if (scale_zone_cents_active) {
-                keys_from_notes_active = false
-                keys_new_from_scale_zone_active = false
+                keys_from_notes_active = false;
+                keys_new_from_scale_zone_active = false;
             }
         }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 20 20" 
@@ -421,14 +456,12 @@
         <h style="margin-right: 15px;"
         use:tooltip={{ content: 'Create notes using keys' }}>Define keys:</h>
 
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div class = "bottom_panel_button"
         use:tooltip={{ content: 'Use notes from scale zone' }}
         onclick={() => {
-            keys_from_notes_active = !keys_from_notes_active
+            keys_from_notes_active = !keys_from_notes_active;
             if (keys_from_notes_active) {
-                scale_zone_cents_active = false
+                scale_zone_cents_active = false;
             }
         }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 21" 
@@ -437,15 +470,13 @@
             </svg>
         </div>
 
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <!--
         <div class = "bottom_panel_button"
         use:tooltip={{ content: 'Create new keys in scale zone' }}
         onclick={() => {
-            keys_new_from_scale_zone_active = !keys_new_from_scale_zone_active
+            keys_new_from_scale_zone_active = !keys_new_from_scale_zone_active;
             if (keys_new_from_scale_zone_active) {
-                scale_zone_cents_active = false
+                scale_zone_cents_active = false;
             }
         }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 22" 
@@ -461,9 +492,8 @@
 <style>
     :global {
 		[data-tippy-root] {
-			--bg: #707070;
-			background-color: var(--bg);
-			color: #dcdcdc;
+			background-color: var(--light);
+			color: var(--very-dark);
 			border-radius: 0.2rem;
 			padding: 0.2rem 0.6rem;
 			filter: drop-shadow(1px 1px 3px rgb(0 0 0 / 0.1));
@@ -480,7 +510,7 @@
         top: 20%;
         left: 50%;
         background-color: rgba(0, 0, 0, 0.7);
-        color: #c3c3c3;
+        color: var(--very-light);
         padding: 20px;
         border-radius: 8px;
         transition: opacity 1s ease-in-out;
@@ -497,7 +527,7 @@
         width: 120px;
         flex-shrink: 0;
         z-index: 1;
-        background-color: #35363a;
+        background-color: var(--background-dark);
     }
 
     #scale_zone_slider_wrapper {
@@ -518,7 +548,7 @@
         text-align: left;
         padding-left: 10px;
         box-sizing: border-box;
-        border: 2px solid #2c2d30;
+        border: 2px solid var(--very-dark);
     }
 
     #keyboard_and_panel_wrapper {
@@ -533,7 +563,7 @@
     }
 
     #keyboard {
-        background-color: #45474c;
+        background-color: var(--background-medium);
         margin-right: 5px;
         margin-left: 5px;
     }
@@ -541,11 +571,11 @@
     #panel_raw_wrapper {
         height: 600px;
         overflow: auto;
-        scrollbar-color: #676e7a #35363a;
+        scrollbar-color: var(--bluish-gray) var(--background-dark);
     }
 
     #panel {
-        background-color: #45474c;
+        background-color: var(--background-medium);
     }
 
     #bottom_panel_wrapper {
@@ -554,7 +584,7 @@
         margin-right: 5px;
         padding: 5px;
         display: flex;
-        background-color: #45474c;
+        background-color: var(--background-medium);
         height: 40px;
         box-sizing: border-box;
     }
@@ -565,12 +595,12 @@
     }
 
     .active_button {
-        fill: #22b14d;
+        fill: var(--green);
     }
 
     .vertical_separator {
         display: inline-block; /* Allows setting width and height */
-        border: 3px solid #35363a; /* Vertical line style */
+        border: 3px solid var(--background-dark); /* Vertical line style */
         height: auto; /* Desired height */
         margin-right: 15px;
     }

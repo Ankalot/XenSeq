@@ -39,7 +39,7 @@
         y1={note_y_px} 
         x2={note_x_px + note_length + 2} 
         y2={note_y_px} 
-        stroke=#fff
+        stroke="var(--very-light)"
         stroke-width="14"
         cursor="pointer"
         />
@@ -49,7 +49,7 @@
     y1={note_y_px} 
     x2={note_x_px + note_length} 
     y2={note_y_px} 
-    stroke=#22b14d
+    stroke="var(--green)"
     stroke-width="10"
     cursor="pointer"
     />
@@ -60,7 +60,7 @@
     y1={note_y_px + 3}
     x2={note_x_px + note_length - 5}
     y2={note_y_px - 3}
-    stroke=#35363a
+    stroke="var(--background-dark)"
     stroke-width="3"
     cursor="col-resize"
     />
