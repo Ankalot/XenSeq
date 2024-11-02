@@ -9,10 +9,8 @@
     import Sidebar from './sidebar.svelte';
 
     // TODO:
-    // 1) add bpm and add midi export
-    // 2) add midi import
-    // 3) add listening: piano sound, start (pause) button, stop button, real-time slider
-    // 4) add mode that creates new keys based on notes in scale zone (CE * SHE)
+    // 1) add listening: piano sound, start (pause) button, stop button, real-time slider
+    // 2) add mode that creates new keys based on notes in scale zone (CE * SHE)
 
     const num_octaves = 3;
     const octave_height_px_no_scale = 300;
@@ -366,13 +364,17 @@
         // EXPORT MIDI (.mid)
         const midi = new ToneMidi.Midi();
         midi.header.setTempo(bpm);
+        midi.header.timeSignatures.push({ ticks: 0, timeSignature: [beats_per_measure, 4] });
         const track = midi.addTrack();
 
-        const num_notes_in_scale = keys_from_notes.length;
+        const keys = notes.filter((obj, index, self) =>
+            index === self.findIndex((t) => t.cents === obj.cents))
+        .map(item => item.cents).sort((a, b) => a - b);
+        const num_notes_in_scale = keys.length;
 
         notes.forEach(note => {
             track.addNote({
-                midi: note.octave*num_notes_in_scale + keys_from_notes.indexOf(note.cents),
+                midi: note.octave*num_notes_in_scale + keys.indexOf(note.cents),
                 time: note.time * beats_per_measure/bpm*60,
                 duration: note.duration * beats_per_measure/bpm*60,
             });
@@ -384,9 +386,55 @@
 
         // EXPORT SCALA (.scl)
         const scalaData = `! output.scl \n ${num_notes_in_scale} \n!\n ${
-            keys_from_notes.map(key => key.toFixed(2)).join('\n ')}`;
+            keys.map(key => key.toFixed(2)).join('\n ')}`;
         const scalaBlob = new Blob([scalaData], { type: 'audio/scala' });
         exportFile(scalaBlob, 'output.scl');
+    }
+
+
+    function importSequence(event: Event) {
+        const target = event.target as HTMLInputElement;
+        const files = target.files;
+        if (!files) return;
+
+        const fileArray = Array.from(files);
+        const midFile = fileArray.find(file => file.name.endsWith('.mid'));
+        const sclFile = fileArray.find(file => file.name.endsWith('.scl'));
+
+        if (midFile && sclFile) {
+            let keys: number[];
+
+            const reader = new FileReader(); // Create a FileReader instance
+            reader.onload = function(e: ProgressEvent<FileReader>) {
+                if (!e.target) return;
+                const content = e.target.result as string; // Get the file content
+                if (!content) return;
+                keys = content.substring(content.lastIndexOf('!') + 1).trim().split(/\s+/).map(Number);
+
+                const midiReader = new FileReader();
+                midiReader.onload = function(emidi: ProgressEvent<FileReader>) {
+                    if (!emidi.target) return;
+                    const content = emidi.target.result as ArrayBuffer;
+                    if (!content) return;
+                    const midi = new ToneMidi.Midi(content);
+
+                    bpm = midi.header.tempos[0].bpm;
+                    beats_per_measure = midi.header.timeSignatures[0].timeSignature[0];
+                    
+                    notes = midi.tracks.flatMap(track => 
+                        track.notes.map(note => ({
+                            octave: Math.floor(note.midi / keys.length),
+                            cents: keys[note.midi % keys.length],
+                            time: note.time/beats_per_measure*bpm/60,
+                            duration: note.duration/beats_per_measure*bpm/60,
+                            selected: false
+                        }))
+                    );
+                }
+                midiReader.readAsArrayBuffer(midFile);
+            };
+            reader.readAsText(sclFile);
+        }
     }
 </script>
 
@@ -660,6 +708,15 @@
 
         <span class="vertical_separator"></span>
         <h style="margin-right: 15px;">File:</h>
+
+        <div class = "bottom_panel_button"
+        use:tooltip={{ content: 'Import Sequence (.mid + .scl files)' }}
+        onclick={() => { document.getElementById('import_files')?.click(); }}>
+            <input id="import_files" type="file" accept=".mid,.scl" multiple onchange={importSequence} style="display: none;"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 1920 1920">
+                <path d="m807.186 686.592 272.864 272.864H0v112.94h1080.05l-272.864 272.978 79.736 79.849 409.296-409.183-409.296-409.184-79.736 79.736ZM1870.419 434.69l-329.221-329.11C1509.688 74.07 1465.979 56 1421.48 56H451.773v730.612h112.94V168.941h790.584v451.762h451.762v1129.405H564.714v-508.233h-112.94v621.173H1920V554.52c0-45.176-17.619-87.754-49.58-119.83Zm-402.181-242.37 315.443 315.442h-315.443V192.319Z" fill-rule="evenodd"></path>
+            </svg>
+        </div>
 
         <div class = "bottom_panel_button"
         use:tooltip={{ content: 'Export Sequence' }}
