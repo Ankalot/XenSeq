@@ -7,8 +7,8 @@
     import Sidebar from './sidebar.svelte';
 
     // TODO:
-    // 1) divide measures into beats, add mode in which time and duration of notes snap to beats 
-    // 2) add bpm and add midi export
+    // 1) add bpm and add midi export
+    // 2) add midi import
     // 3) add listening: piano sound, start (pause) button, stop button, real-time slider
     // 4) add mode that creates new keys based on notes in scale zone (CE * SHE)
 
@@ -20,6 +20,9 @@
 
     const min_note_duration = 1/32;
     let default_note_duration = 1/4;
+
+    let beats_per_measure = $state(2);
+    let divisions_of_beat = $state(1);
 
     type Note = {
         octave: number,   // [0; num_octaves-1]  int       in number
@@ -102,8 +105,13 @@
             notes.forEach(note => note.selected=false);
             const svg = event.currentTarget as SVGElement;
             const rect = svg.getBoundingClientRect();
-            const x = event.clientX - rect.left; // Calculate x position relative to SVG
+            let x = event.clientX - rect.left; // Calculate x position relative to SVG
             const y = event.clientY - rect.top;  // Calculate y position relative to SVG
+
+            if (snap_notes_to_grid_active) {
+                const x_step = measure_width_px/(divisions_of_beat*beats_per_measure)
+                x = Math.floor(x/x_step)*x_step;
+            }
 
             if (keys_from_notes_active && keys_from_notes.length != 0) {
                 const cents_y = y2cents(y);
@@ -166,6 +174,12 @@
         }
 
         function mouseUpHandler() {
+            if (snap_notes_to_grid_active) {
+                selectedNotes.forEach(note => {
+                    const x_step = measure_width_px/(divisions_of_beat*beats_per_measure);
+                    note.time = x2time(Math.floor(time2x(note.time)/x_step)*x_step);
+                });
+            }
             window.removeEventListener('mousemove', mouseMoveHandler);
             window.removeEventListener('mouseup', mouseUpHandler);
         }
@@ -193,6 +207,13 @@
         }
 
         function mouseUpHandler() {
+            if (snap_notes_to_grid_active) {
+                selectedNotes.forEach(note => {
+                    const x_step = measure_width_px/(divisions_of_beat*beats_per_measure);
+                    note.duration = x2time(Math.max(Math.floor(time2x(note.duration)/x_step), 1)*x_step);
+                    default_note_duration = note.duration;
+                });
+            }
             window.removeEventListener('mousemove', mouseMoveHandler);
             window.removeEventListener('mouseup', mouseUpHandler);
         }
@@ -279,6 +300,8 @@
     let scale_zone_cents_active = $state(false);
     let keys_from_notes_active = $state(false);
     let keys_new_from_scale_zone_active = $state(false);
+    let show_grid_active = $state(true);
+    let snap_notes_to_grid_active = $state(true); 
 
 
     let scale_zone_min = 0;
@@ -404,6 +427,33 @@
                         />
                     {/each}
 
+                    {#if show_grid_active}
+                        {#each Array(num_measures+1) as _, measure_ind}
+                            {#each Array(beats_per_measure) as _, beats_ind}
+                                <line 
+                                    x1={(measure_ind + beats_ind/beats_per_measure) * measure_width_px} 
+                                    y1={0}
+                                    x2={(measure_ind + beats_ind/beats_per_measure) * measure_width_px} 
+                                    y2={num_octaves*octave_height_px} 
+                                    stroke="var(--background-dark)"
+                                    stroke-width="2"
+                                />
+                                {#each Array(divisions_of_beat) as _, division_ind}
+                                    <line 
+                                        x1={(measure_ind + (beats_ind + division_ind/divisions_of_beat)/beats_per_measure)
+                                            * measure_width_px}
+                                        y1={0}
+                                        x2={(measure_ind + (beats_ind + division_ind/divisions_of_beat)/beats_per_measure)
+                                            * measure_width_px}
+                                        y2={num_octaves*octave_height_px} 
+                                        stroke="var(--background-dark)"
+                                        stroke-width="1"
+                                    />
+                                {/each}
+                            {/each}
+                        {/each}
+                    {/if}
+
                     {#if keys_from_notes_active}
                         {#each Array.from({ length: num_octaves }) as _, octave}
                             {#each keys_from_notes as key, index}
@@ -491,6 +541,51 @@
             </svg>
         </div>
         -->
+
+        <span class="vertical_separator"></span>
+        <h style="margin-right: 15px;">Time:</h>
+
+        <div class = "bottom_panel_button">
+            <h>Signature:</h>
+            <select id="beats_per_measure_select" bind:value={beats_per_measure}>
+                <option value={2}>2/4</option>
+                <option value={3}>3/4</option>
+                <option value={4}>4/4</option>
+                <option value={5}>5/4</option>
+            </select>
+        </div>
+
+        <div class = "bottom_panel_button">
+            <h>Grid:</h>
+            <select id="divisions_of_beat_select" bind:value={divisions_of_beat}>
+                <option value={1}>1</option>
+                <option value={2}>1/2</option>
+                <option value={3}>1/3</option>
+                <option value={4}>1/4</option>
+                <option value={6}>1/6</option>
+                <option value={8}>1/8</option>
+                <option value={12}>1/12</option>
+                <option value={16}>1/16</option>
+            </select>
+        </div>
+
+        <div class = "bottom_panel_button"
+        use:tooltip={{ content: 'Show grid' }}
+        onclick={() => { show_grid_active = !show_grid_active; }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 30" 
+            class="{show_grid_active ? 'active_button' : ''}">
+                <path d="M6 0 6 7 0 7 0 9 6 9 6 21 0 21 0 23 6 23 6 30 8 30 8 23 14 23 14 30 16 30 16 23 22 23 22 30 24 30 24 23 30 23 30 21 24 21 24 9 30 9 30 7 24 7 24 0 22 0 22 7 16 7 16 0 14 0 14 7 8 7 8 0M8 9 14 9 14 21 8 21M16 9 22 9 22 21 16 21"/>
+            </svg>
+        </div>
+
+        <div class = "bottom_panel_button"
+        use:tooltip={{ content: 'Snap notes to grid' }}
+        onclick={() => { snap_notes_to_grid_active = !snap_notes_to_grid_active; }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 30" 
+            class="{snap_notes_to_grid_active ? 'active_button' : ''}">
+                <path d="M6 0 6 4 0 4 0 12 6 12 6 21 0 21 0 23 6 23 6 30 8 30 8 23 14 23 14 30 16 30 16 26 22 26 22 30 24 30 24 23 30 23 30 21 24 21 24 9 30 9 30 7 24 7 24 0 22 0 22 7 16 7 16 0 14 0 14 4 8 4 8 0M8 12 14 12 14 21 8 21M16 9 22 9 22 18 16 18"/>
+            </svg>
+        </div>
     </div>
 </div>
 
@@ -609,5 +704,10 @@
         border: 3px solid var(--background-dark); /* Vertical line style */
         height: auto; /* Desired height */
         margin-right: 15px;
+    }
+
+    select {
+        color: var(--very-dark);
+        background-color: var(--light);
     }
 </style>
