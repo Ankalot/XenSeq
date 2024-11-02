@@ -21,8 +21,8 @@
     const min_note_duration = 1/32;
     let default_note_duration = 1/4;
 
-    let beats_per_measure = $state(2);
-    let divisions_of_beat = $state(1);
+    let beats_per_measure = $state(4);
+    let divisions_of_beat = $state(4);
 
     type Note = {
         octave: number,   // [0; num_octaves-1]  int       in number
