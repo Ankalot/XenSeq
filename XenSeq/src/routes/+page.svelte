@@ -8,6 +8,10 @@
 
     // TODO:
     // 1) change note dragging while on keys from notes mode
+    // 2) divide measures into beats, add mode in which time and duration of notes snap to beats 
+    // 3) add bpm and add midi export
+    // 4) add listening: piano sound, start (pause) button, stop button, real-time slider
+    // 5) add mode that creates new keys based on notes in scale zone (CE * SHE)
 
     const num_octaves = 3;
     const octave_height_px = 300;
@@ -16,7 +20,7 @@
     const measure_width_px = 300;
 
     const min_note_duration = 1/32;
-    const default_note_duration = 1/4;
+    let default_note_duration = 1/4;
 
     type Note = {
         octave: number,   // [0; num_octaves-1]  int       in number
@@ -181,6 +185,7 @@
                 if (note.duration < min_note_duration) {
                     note.duration = min_note_duration;
                 }
+                default_note_duration = note.duration;
             });
 
             x = moveEvent.clientX;
