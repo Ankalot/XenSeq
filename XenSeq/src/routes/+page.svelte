@@ -7,11 +7,10 @@
     import Sidebar from './sidebar.svelte';
 
     // TODO:
-    // 1) change note dragging while on keys from notes mode
-    // 2) divide measures into beats, add mode in which time and duration of notes snap to beats 
-    // 3) add bpm and add midi export
-    // 4) add listening: piano sound, start (pause) button, stop button, real-time slider
-    // 5) add mode that creates new keys based on notes in scale zone (CE * SHE)
+    // 1) divide measures into beats, add mode in which time and duration of notes snap to beats 
+    // 2) add bpm and add midi export
+    // 3) add listening: piano sound, start (pause) button, stop button, real-time slider
+    // 4) add mode that creates new keys based on notes in scale zone (CE * SHE)
 
     const num_octaves = 3;
     const octave_height_px = 300;
@@ -147,16 +146,18 @@
                     note.time = 0;
                 }
 
-                const new_y = cents2y(note.cents, note.octave) + dy;
-                note.cents = y2cents(new_y);
-                note.octave = y2octave(new_y);
+                if (!keys_from_notes_active) {
+                    const new_y = cents2y(note.cents, note.octave) + dy;
+                    note.cents = y2cents(new_y);
+                    note.octave = y2octave(new_y);
 
-                if (note.octave < 0) {
-                    note.octave = 0;
-                    note.cents = 0;
-                } else if (note.octave > num_octaves - 1) {
-                    note.octave = num_octaves - 1;
-                    note.cents = 1199;
+                    if (note.octave < 0) {
+                        note.octave = 0;
+                        note.cents = 0;
+                    } else if (note.octave > num_octaves - 1) {
+                        note.octave = num_octaves - 1;
+                        note.cents = 1199;
+                    }
                 }
             });
 
