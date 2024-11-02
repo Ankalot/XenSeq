@@ -9,6 +9,7 @@
     import Sidebar from './sidebar.svelte';
 
     // TODO:
+    // 0) add zoom in and out, update `help`
     // 1) add bpm and add midi export
     // 2) add midi import
     // 3) add listening: piano sound, start (pause) button, stop button, real-time slider
@@ -257,6 +258,11 @@
         if (event.code == "Escape") {
             notes.forEach(note => note.selected = false);
             fadeEnteredNumber();
+        }
+
+        if (event.ctrlKey && event.key === 'a') {
+            event.preventDefault();
+            notes.forEach(note => note.selected = true);
         }
 
         // set cents of selected note(-s)
@@ -586,7 +592,7 @@
         <span class="vertical_separator"></span>
         <h style="margin-right: 15px;">Time:</h>
 
-        <div class = "bottom_panel_button">
+        <div class = "bottom_panel_element">
             <h>Signature:</h>
             <select id="beats_per_measure_select" bind:value={beats_per_measure}>
                 <option value={2}>2/4</option>
@@ -596,7 +602,7 @@
             </select>
         </div>
 
-        <div class = "bottom_panel_button">
+        <div class = "bottom_panel_element">
             <h>Grid:</h>
             <select id="divisions_of_beat_select" bind:value={divisions_of_beat}>
                 <option value={1}>1</option>
@@ -755,6 +761,10 @@
 
     .bottom_panel_button {
         cursor: pointer;
+        margin-right: 15px;
+    }
+
+    .bottom_panel_element {
         margin-right: 15px;
     }
 

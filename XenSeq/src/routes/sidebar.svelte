@@ -10,6 +10,7 @@
     <p> 3. Click RMB on a note to delete it. Click DELETE to delete selected note(-s). </p>
     <p> 4. You can drag or resize selected note(-s) using LMB. </p>
     <p> 5. When note(-s) is(are) selected, you can set the number of cents (use "0-9", ".", BACKSPACE, then hit ENTER) </p>
+    <p> 6. Use Ctrl+A to select all notes. </p>
 </aside>
 
 
