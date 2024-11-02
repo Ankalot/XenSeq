@@ -1,5 +1,7 @@
 <script lang="ts">
     import tippy from 'tippy.js';
+    import * as Tone from 'tone';
+    import * as ToneMidi from '@tonejs/midi';
 
     import ScaleZoneSlider from "./scale_zone_slider.svelte";
     import NoteLine from "./note.svelte";
@@ -23,6 +25,7 @@
 
     let beats_per_measure = $state(4);
     let divisions_of_beat = $state(4);
+    let bpm = $state(110);
 
     type Note = {
         octave: number,   // [0; num_octaves-1]  int       in number
@@ -305,7 +308,7 @@
 
 
     let scale_zone_min = 0;
-    let scale_zone_max = $derived(num_measures*16);
+    let scale_zone_max = $derived(num_measures*beats_per_measure*divisions_of_beat);
     // svelte-ignore state_referenced_locally
     let scale_zone_range = $state([scale_zone_min, scale_zone_max]);
     let scale_zone_factor = $derived(num_measures*measure_width_px/scale_zone_max);
@@ -328,7 +331,45 @@
         .filter((obj, index, self) =>
             index === self.findIndex((t) => t.y_px === obj.y_px)
         )
-    )
+    );
+
+
+    function exportFile(blob: Blob, filename: string) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function exportSequence() {
+        // EXPORT MIDI (.mid)
+        const midi = new ToneMidi.Midi();
+        midi.header.setTempo(bpm);
+        const track = midi.addTrack();
+
+        const num_notes_in_scale = keys_from_notes.length;
+
+        notes.forEach(note => {
+            track.addNote({
+                midi: note.octave*num_notes_in_scale + keys_from_notes.indexOf(note.cents),
+                time: note.time * beats_per_measure/bpm*60,
+                duration: note.duration * beats_per_measure/bpm*60,
+            });
+        });
+        
+        const midiData = midi.toArray();
+        const midiBlob = new Blob([new Uint8Array(midiData)], { type: 'audio/midi' });
+        exportFile(midiBlob, 'output.mid');
+
+        // EXPORT SCALA (.scl)
+        const scalaData = `! output.scl \n ${num_notes_in_scale} \n!\n ${
+            keys_from_notes.map(key => key.toFixed(2)).join('\n ')}`;
+        const scalaBlob = new Blob([scalaData], { type: 'audio/scala' });
+        exportFile(scalaBlob, 'output.scl');
+    }
 </script>
 
 
@@ -586,6 +627,28 @@
                 <path d="M6 0 6 4 0 4 0 12 6 12 6 21 0 21 0 23 6 23 6 30 8 30 8 23 14 23 14 30 16 30 16 26 22 26 22 30 24 30 24 23 30 23 30 21 24 21 24 9 30 9 30 7 24 7 24 0 22 0 22 7 16 7 16 0 14 0 14 4 8 4 8 0M8 12 14 12 14 21 8 21M16 9 22 9 22 18 16 18"/>
             </svg>
         </div>
+
+        <div class = "bottom_panel_button">
+            <h>BPM:</h>
+            <input 
+                id = "bpm_input"
+                bind:value={bpm}
+                type="number" 
+                min="1"
+                max="999"
+            />
+        </div>
+
+        <span class="vertical_separator"></span>
+        <h style="margin-right: 15px;">File:</h>
+
+        <div class = "bottom_panel_button"
+        use:tooltip={{ content: 'Export Sequence' }}
+        onclick={() => { exportSequence(); }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 1920 1920">
+                <path d="m0 1016.081 409.186 409.073 79.85-79.736-272.867-272.979h1136.415V959.611H216.169l272.866-272.866-79.85-79.85L0 1016.082ZM1465.592 305.32l315.445 315.445h-315.445V305.32Zm402.184 242.372-329.224-329.11C1507.042 187.07 1463.334 169 1418.835 169h-743.83v677.647h112.94V281.941h564.706v451.765h451.765v903.53H787.946V1185.47H675.003v564.705h1242.353V667.522c0-44.498-18.07-88.207-49.581-119.83Z" fill-rule="evenodd"></path>
+            </svg>
+        </div>
     </div>
 </div>
 
@@ -709,5 +772,13 @@
     select {
         color: var(--very-dark);
         background-color: var(--light);
+    }
+
+    #bpm_input {
+        color: var(--very-dark);
+        background-color: var(--light);
+        height: 24px;
+        width: 50px;
+        padding-left: 5px;
     }
 </style>
