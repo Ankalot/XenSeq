@@ -9,17 +9,20 @@
     import Sidebar from './sidebar.svelte';
 
     // TODO:
-    // 0) add zoom in and out, update `help`
     // 1) add bpm and add midi export
     // 2) add midi import
     // 3) add listening: piano sound, start (pause) button, stop button, real-time slider
     // 4) add mode that creates new keys based on notes in scale zone (CE * SHE)
 
     const num_octaves = 3;
-    const octave_height_px = 300;
+    const octave_height_px_no_scale = 300;
 
     const num_measures_min = 6;
-    const measure_width_px = 300;
+    const measure_width_px_no_scale = 300;
+
+    let panel_scale = $state(1);
+    let measure_width_px = $derived(measure_width_px_no_scale * panel_scale);
+    let octave_height_px = $derived(octave_height_px_no_scale * panel_scale);
 
     const min_note_duration = 1/32;
     let default_note_duration = 1/4;
@@ -95,6 +98,15 @@
 
         const scrollTop = panel_wrapper.scrollTop;
         keyboard.style.transform = `translateY(${-scrollTop}px)`;
+    }
+
+    function handleWheel(event: WheelEvent) {
+        if (event.ctrlKey) {
+            event.preventDefault();
+            const delta = event.deltaY;
+            panel_scale += delta * -0.001;
+            panel_scale = Math.min(Math.max(0.125, panel_scale), 4);
+        }
     }
 
 
@@ -450,7 +462,8 @@
             <div id = "panel" style="height: {num_octaves*octave_height_px}px; width: {num_measures*measure_width_px}px"
             oncontextmenu={(e) => {e.preventDefault();}}>
                 <svg width={num_measures*measure_width_px} height={num_octaves*octave_height_px} role="presentation"
-                onmousedown={handlePanelMouseDown}>
+                onmousedown={handlePanelMouseDown}
+                onwheel={handleWheel}>
 
                     {#each Array(num_octaves+1) as _, index}
                         <line 
