@@ -2,6 +2,7 @@
     import tippy from 'tippy.js';
     import * as Tone from 'tone';
     import * as ToneMidi from '@tonejs/midi';
+    import { onMount } from 'svelte';
 
     import ScaleZoneSlider from "./scale_zone_slider.svelte";
     import NoteLine from "./note.svelte";
@@ -9,10 +10,14 @@
     import Sidebar from './sidebar.svelte';
 
     // TODO:
-    // 1) add listening: piano sound, start (pause) button, stop button, real-time slider
-    // 2) add mode that creates new keys based on notes in scale zone (CE * SHE)
+    // 0) make import and export svg's the same size 
+    // 1) when you click on the timeline, start playing from a specific time or stop playing
+    // 2) delete notes when rmb is pressed
+    // 3) add slider for volume (global)
+    // 4) add keyboard support in mode with keys from notes
+    // 5) add mode that creates new keys based on notes in scale zone (CE * SHE)
 
-    const num_octaves = 3;
+    const num_octaves = 6;
     const octave_height_px_no_scale = 300;
 
     const num_measures_min = 6;
@@ -60,6 +65,14 @@
 
     function x2time(x: number): number {
         return x/measure_width_px;
+    }
+
+    function measures2time(measures: number): number {
+        return measures*beats_per_measure/bpm*60;
+    }
+
+    function time2measures(time: number): number {
+        return time/beats_per_measure*bpm/60;
     }
 
     let num_measures = $derived(
@@ -275,6 +288,11 @@
             notes.forEach(note => note.selected = true);
         }
 
+        if (event.key == " ") {
+            event.preventDefault();
+            play();
+        }
+
         // set cents of selected note(-s)
         if (notes.some(note => note.selected)) {
             if (event.key >= '0' && event.key <= '9' || event.key === ".") {
@@ -375,8 +393,8 @@
         notes.forEach(note => {
             track.addNote({
                 midi: note.octave*num_notes_in_scale + keys.indexOf(note.cents),
-                time: note.time * beats_per_measure/bpm*60,
-                duration: note.duration * beats_per_measure/bpm*60,
+                time: measures2time(note.time),
+                duration: measures2time(note.duration),
             });
         });
         
@@ -425,8 +443,8 @@
                         track.notes.map(note => ({
                             octave: Math.floor(note.midi / keys.length),
                             cents: keys[note.midi % keys.length],
-                            time: note.time/beats_per_measure*bpm/60,
-                            duration: note.duration/beats_per_measure*bpm/60,
+                            time: time2measures(note.time),
+                            duration: time2measures(note.duration),
                             selected: false
                         }))
                     );
@@ -434,6 +452,84 @@
                 midiReader.readAsArrayBuffer(midFile);
             };
             reader.readAsText(sclFile);
+        }
+    }
+
+
+    let isPlaying = $state(false);
+    let timelineValue = $state(0);
+    let min_freq = $state(32.7);
+    let sampler: Tone.Sampler;
+
+    function notesToSampler() {
+        sampler.unsync(); // i hope unsync-sync deletes triggerAttackRelease
+        sampler.sync();
+        notes.forEach(note => {
+            sampler.triggerAttackRelease(
+                cents2hz(note.cents, note.octave), 
+                measures2time(note.duration),
+                measures2time(note.time)
+            );
+        });
+    }
+
+    onMount(() => {
+        // this is necessary so that the components from the top panel fit correctly
+        handleScroll(); 
+
+        // create sampler
+        const urls: any = {};
+        for (let i = 1; i <= 7; i++) {
+            urls[`C${i}`] = `C${i}.mp3`;
+            urls[`D#${i}`] = `Ds${i}.mp3`;
+            urls[`F#${i}`] = `Fs${i}.mp3`;
+            urls[`A${i}`] = `A${i}.mp3`;
+        }
+        sampler = new Tone.Sampler({
+            urls: urls,
+            release: 2,
+            baseUrl: "https://tonejs.github.io/audio/salamander/",
+        }).toDestination();
+        sampler.sync();
+
+        // move timeline slider
+        Tone.getTransport().scheduleRepeat((time) => {
+            timelineValue = Tone.getTransport().seconds;
+        }, "64n");
+
+        // when playing you can add notes and they will be played
+        $effect(() => {
+            notesToSampler();
+        });
+    });
+
+    function cents2hz(cents: number, octave: number) {
+        return min_freq*Math.pow(2, (octave+cents/1200));
+    }
+
+    async function startAudio() {
+        await Tone.start();
+        console.log("audio is ready");
+    }
+
+    function play() {
+        if (!isPlaying) {
+            startAudio();
+
+            notesToSampler();
+            //Tone.getTransport().bpm.value = bpm;
+            //Tone.getTransport().timeSignature = [beats_per_measure, 4];
+            Tone.getTransport().start();
+
+            isPlaying = true;
+        } else {
+            sampler.releaseAll();
+            sampler.unsync(); // i hope unsync-sync deletes triggerAttackRelease
+            sampler.sync();
+            Tone.getTransport().stop();
+            Tone.getTransport().seconds = 0;
+            
+            isPlaying = false;
         }
     }
 </script>
@@ -452,13 +548,45 @@
 
 <div id = "sequencer">
     <div id = "scale_zones_and_timeline_wrapper">
-        <div id = "blank"></div>
+        <div id = "blank">
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <div style="margin-top: 15px; margin-left: 5px; cursor: pointer;" onclick={play}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="none" viewBox="0 0 24 24">
+                    <path stroke="var(--light)" stroke-width="2" stroke-linejoin="round" d={isPlaying ? 
+                    "M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z"
+                    :
+                    "M16.6582 9.28638C18.098 10.1862 18.8178 10.6361 19.0647 11.2122C19.2803 11.7152 19.2803 12.2847 19.0647 12.7878C18.8178 13.3638 18.098 13.8137 16.6582 14.7136L9.896 18.94C8.29805 19.9387 7.49907 20.4381 6.83973 20.385C6.26501 20.3388 5.73818 20.0469 5.3944 19.584C5 19.053 5 18.1108 5 16.2264V7.77357C5 5.88919 5 4.94701 5.3944 4.41598C5.73818 3.9531 6.26501 3.66111 6.83973 3.6149C7.49907 3.5619 8.29805 4.06126 9.896 5.05998L16.6582 9.28638Z"
+                    }></path>
+                </svg>
+            </div>
+
+            <div style="margin-top: 15px; margin-left: 5px;"
+            use:tooltip={{ content: '0 cents Octave 0, Hz' }}>
+                <input 
+                    id = "min_freq_input"
+                    bind:value={min_freq}
+                    type="number"
+                    min="1"
+                    max="9999"
+                />
+            </div>
+        </div>
+
         <div id = "scale_zones_and_timeline_movable" bind:this={scale_zones_and_timeline_movable}>
             <div id = "scale_zone_slider_wrapper">
                 <ScaleZoneSlider min_val={scale_zone_min} max_val={scale_zone_max} 
                 bind:values={scale_zone_range}/>
             </div>
             <div id = "timeline">
+                {#if isPlaying}
+                    <svg
+                    style="left: {time2measures(timelineValue)*measure_width_px}px; position: absolute; margin-left: -15px;"
+                    xmlns="http://www.w3.org/2000/svg" width="30" height="28" fill="var(--green)" viewBox="0 0 30 28">
+                        <path d="M0 0 14 28 16 28 30 0 0 0"></path>
+                    </svg>
+                {/if}
+
                 {#each Array.from({ length: num_measures }) as _, index}
                     <div class="measure" style="width: {measure_width_px}px;"> {index + 1} </div>
                 {/each}
@@ -583,6 +711,17 @@
                             startDragging = {(x, y) => startNoteDragging(index, x, y)}
                             startResizing = {(x) => startNoteResizing(index, x)}/>
                     {/each}
+
+                    {#if isPlaying}
+                        <line
+                        x1={time2measures(timelineValue)*measure_width_px} 
+                        y1={0} 
+                        x2={time2measures(timelineValue)*measure_width_px} 
+                        y2={num_octaves*octave_height_px} 
+                        stroke="var(--green)"
+                        stroke-width="2"
+                        />
+                    {/if}
                 </svg>
             </div>
         </div>
@@ -695,7 +834,7 @@
             </svg>
         </div>
 
-        <div class = "bottom_panel_button">
+        <div class = "bottom_panel_element">
             <h>BPM:</h>
             <input 
                 id = "bpm_input"
@@ -764,6 +903,7 @@
     }
 
     #blank {
+        display: flex;
         width: 120px;
         flex-shrink: 0;
         z-index: 1;
@@ -860,5 +1000,13 @@
         height: 24px;
         width: 50px;
         padding-left: 5px;
+    }
+
+    #min_freq_input {
+        color: var(--very-dark);
+        background-color: var(--light);
+        padding-left: 5px;
+        width: 65px;
+        border-radius: 5px;
     }
 </style>

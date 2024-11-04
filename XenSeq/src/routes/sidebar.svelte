@@ -11,7 +11,9 @@
     <p> 4. You can drag or resize selected note(-s) using LMB. </p>
     <p> 5. When note(-s) is(are) selected, you can set the number of cents (use "0-9", ".", BACKSPACE, then hit ENTER) </p>
     <p> 6. Use Ctrl+A to select all notes. </p>
-    <p> 7. Use Ctrl+Scroll to zoom in/out. </p>
+    <h1 style="text-align: center; margin-bottom: 10px; margin-top: 10px">OTHER</h1>
+    <p> 1. Use Ctrl+Scroll to zoom in/out. </p>
+    <p> 2. Use Spacebar to play/stop. </p>
 </aside>
 
 
