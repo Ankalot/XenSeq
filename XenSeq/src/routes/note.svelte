@@ -5,8 +5,7 @@
     export let selected = false;
 
 
-    // @ts-ignore
-    function handleOnMouseDown(event, resize: boolean) {
+    function handleOnMouseDown(event: MouseEvent, resize: boolean) {
         event.stopPropagation();
 
         if (event.button === 0) {
@@ -22,6 +21,12 @@
         }
     }
 
+    function handleOnMouseEnter(event: MouseEvent) {
+        if (event.buttons === 2) {
+            removeNote();
+        }
+    }
+
 
     export let removeNote: () => void;
     export let selectNote: (shiftKey: boolean) => void;
@@ -32,7 +37,8 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
-<svg onmousedown={e => handleOnMouseDown(e, false)}>
+<svg onmousedown={e => handleOnMouseDown(e, false)}
+onmouseenter={handleOnMouseEnter}>
     {#if selected}
         <line
         x1={note_x_px - 2} 

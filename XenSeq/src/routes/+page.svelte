@@ -10,12 +10,10 @@
     import Sidebar from './sidebar.svelte';
 
     // TODO:
-    // 0) make import and export svg's the same size 
     // 1) when you click on the timeline, start playing from a specific time or stop playing
-    // 2) delete notes when rmb is pressed
-    // 3) add slider for volume (global)
-    // 4) add keyboard support in mode with keys from notes
-    // 5) add mode that creates new keys based on notes in scale zone (CE * SHE)
+    // 2) add slider for volume (global)
+    // 3) add keyboard support in mode with keys from notes
+    // 4) add mode that creates new keys based on notes in scale zone (CE * SHE)
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
