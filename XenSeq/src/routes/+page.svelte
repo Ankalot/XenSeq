@@ -938,7 +938,7 @@
     #keyboard_wrapper {
         width: 120px;
         flex-shrink: 0;
-        height: 600px;
+        height: calc(100vh - 120px);
         overflow: hidden;
     }
 
@@ -949,7 +949,7 @@
     }
 
     #panel_raw_wrapper {
-        height: 600px;
+        height: calc(100vh - 120px);
         overflow: auto;
         scrollbar-color: var(--bluish-gray) var(--background-dark);
     }
