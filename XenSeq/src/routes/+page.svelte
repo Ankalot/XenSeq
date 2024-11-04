@@ -10,10 +10,8 @@
     import Sidebar from './sidebar.svelte';
 
     // TODO:
-    // 1) when you click on the timeline, start playing from a specific time or stop playing
-    // 2) add slider for volume (global)
-    // 3) add keyboard support in mode with keys from notes
-    // 4) add mode that creates new keys based on notes in scale zone (CE * SHE)
+    // 1) add keyboard support in mode with keys from notes
+    // 2) add mode that creates new keys based on notes in scale zone (CE * SHE)
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -458,6 +456,8 @@
     let timelineValue = $state(0);
     let min_freq = $state(32.7);
     let sampler: Tone.Sampler;
+    let vol: Tone.Volume;
+    let volume = $state(0.7);
 
     function notesToSampler() {
         sampler.unsync(); // i hope unsync-sync deletes triggerAttackRelease
@@ -487,7 +487,9 @@
             urls: urls,
             release: 2,
             baseUrl: "https://tonejs.github.io/audio/salamander/",
-        }).toDestination();
+        });
+        vol = new Tone.Volume(20 * Math.log10(volume)).toDestination();
+        sampler.connect(vol);
         sampler.sync();
 
         // move timeline slider
@@ -879,6 +881,14 @@
                 <path d="M18.66,20.9c-.41-.37-1.05-.33-1.41,.09-.57,.65-1.39,1.02-2.25,1.02H5c-1.65,0-3-1.35-3-3V5c0-1.65,1.35-3,3-3h4.51c.16,0,.33,0,.49,.02V7c0,1.65,1.35,3,3,3h5.81c.31,0,.6-.14,.79-.39s.25-.56,.18-.86c-.31-1.22-.94-2.33-1.83-3.22l-3.48-3.48c-1.32-1.32-3.08-2.05-4.95-2.05H5C2.24,0,0,2.24,0,5v14c0,2.76,2.24,5,5,5H15c1.43,0,2.8-.62,3.75-1.69,.37-.41,.33-1.05-.09-1.41ZM12,2.66c.38,.22,.73,.49,1.05,.81l3.48,3.48c.31,.31,.58,.67,.8,1.05h-4.34c-.55,0-1-.45-1-1V2.66Zm11.13,15.43l-1.61,1.61c-.2,.2-.45,.29-.71,.29s-.51-.1-.71-.29c-.39-.39-.39-1.02,0-1.41l1.29-1.29h-7.4c-.55,0-1-.45-1-1s.45-1,1-1h7.4l-1.29-1.29c-.39-.39-.39-1.02,0-1.41s1.02-.39,1.41,0l1.61,1.61c1.15,1.15,1.15,3.03,0,4.19Z"></path>
             </svg>
         </div>
+
+        <span class="vertical_separator"></span>
+
+        <div class = "bottom_panel_element">
+            <h>Volume:</h>
+            <input id="volume_input" type="range" min="0" max="1" bind:value={volume} step=".01" 
+            onchange={() => vol.volume.value = 20 * Math.log10(volume)}/>
+        </div>
     </div>
 </div>
 
@@ -1024,5 +1034,11 @@
         padding-left: 5px;
         width: 65px;
         border-radius: 5px;
+    }
+
+    #volume_input {
+        margin-left: 5px;
+        width: 80px;
+        accent-color: var(--light);
     }
 </style>
