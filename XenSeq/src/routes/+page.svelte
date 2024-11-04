@@ -65,11 +65,11 @@
         return x/measure_width_px;
     }
 
-    function measures2time(measures: number): number {
+    function measures2seconds(measures: number): number {
         return measures*beats_per_measure/bpm*60;
     }
 
-    function time2measures(time: number): number {
+    function seconds2measures(time: number): number {
         return time/beats_per_measure*bpm/60;
     }
 
@@ -391,8 +391,8 @@
         notes.forEach(note => {
             track.addNote({
                 midi: note.octave*num_notes_in_scale + keys.indexOf(note.cents),
-                time: measures2time(note.time),
-                duration: measures2time(note.duration),
+                time: measures2seconds(note.time),
+                duration: measures2seconds(note.duration),
             });
         });
         
@@ -441,8 +441,8 @@
                         track.notes.map(note => ({
                             octave: Math.floor(note.midi / keys.length),
                             cents: keys[note.midi % keys.length],
-                            time: time2measures(note.time),
-                            duration: time2measures(note.duration),
+                            time: seconds2measures(note.time),
+                            duration: seconds2measures(note.duration),
                             selected: false
                         }))
                     );
@@ -465,8 +465,8 @@
         notes.forEach(note => {
             sampler.triggerAttackRelease(
                 cents2hz(note.cents, note.octave), 
-                measures2time(note.duration),
-                measures2time(note.time)
+                measures2seconds(note.duration),
+                measures2seconds(note.time)
             );
         });
     }
@@ -526,9 +526,21 @@
             sampler.sync();
             Tone.getTransport().stop();
             Tone.getTransport().seconds = 0;
+            timelineValue = Tone.getTransport().seconds;
             
             isPlaying = false;
         }
+    }
+
+    function measureClick(event: MouseEvent, measureInd: number) {
+        const div = event.currentTarget as HTMLElement;
+        const rect = div.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+
+        Tone.getTransport().seconds = measures2seconds(x/measure_width_px + measureInd);
+        timelineValue = Tone.getTransport().seconds;
+        
+        play();
     }
 </script>
 
@@ -579,14 +591,19 @@
             <div id = "timeline">
                 {#if isPlaying}
                     <svg
-                    style="left: {time2measures(timelineValue)*measure_width_px}px; position: absolute; margin-left: -15px;"
+                    style="left: {seconds2measures(timelineValue)*measure_width_px}px; position: absolute; margin-left: -15px;"
                     xmlns="http://www.w3.org/2000/svg" width="30" height="28" fill="var(--green)" viewBox="0 0 30 28">
                         <path d="M0 0 14 28 16 28 30 0 0 0"></path>
                     </svg>
                 {/if}
 
                 {#each Array.from({ length: num_measures }) as _, index}
-                    <div class="measure" style="width: {measure_width_px}px;"> {index + 1} </div>
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <div class="measure" style="width: {measure_width_px}px;"
+                    onclick={e => measureClick(e, index)}>
+                        {index + 1}
+                    </div>
                 {/each}
             </div>
         </div>
@@ -712,9 +729,9 @@
 
                     {#if isPlaying}
                         <line
-                        x1={time2measures(timelineValue)*measure_width_px} 
+                        x1={seconds2measures(timelineValue)*measure_width_px} 
                         y1={0} 
-                        x2={time2measures(timelineValue)*measure_width_px} 
+                        x2={seconds2measures(timelineValue)*measure_width_px} 
                         y2={num_octaves*octave_height_px} 
                         stroke="var(--green)"
                         stroke-width="2"
@@ -927,6 +944,7 @@
         padding-left: 10px;
         box-sizing: border-box;
         border: 2px solid var(--very-dark);
+        cursor: pointer;
     }
 
     #keyboard_and_panel_wrapper {
