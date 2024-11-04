@@ -283,7 +283,7 @@
             fadeEnteredNumber();
         }
 
-        if (event.ctrlKey && event.key === 'a') {
+        if (event.ctrlKey && event.keyCode === 65) {
             event.preventDefault();
             notes.forEach(note => note.selected = true);
         }
