@@ -10,8 +10,7 @@
     import Sidebar from './sidebar.svelte';
 
     // TODO:
-    // 1) add keyboard support in mode with keys from notes
-    // 2) add mode that creates new keys based on notes in scale zone (CE * SHE)
+    // 1) add mode that creates new keys based on notes in scale zone (CE * SHE)
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -94,6 +93,15 @@
         .map(item => item.cents).sort((a, b) => a - b)
     );
 
+    // array of all keys from keys_from_notes_active with octave transpositions
+    //    boolean indicates whether a note is currently played manually using keyboard
+    let keys_from_notes_is_played: boolean[][] = $state([]);
+    $effect(() => {
+        keys_from_notes_is_played = Array.from(
+            { length: num_octaves },
+            () => Array(keys_from_notes.length).fill(false)
+        );
+    });
 
     let scale_zones_and_timeline_movable: HTMLDivElement;
     let keyboard: HTMLDivElement;
@@ -254,6 +262,13 @@
     let show_entered_number = $state(false);
     let entered_number_timeout: number | undefined;
 
+    const keyboardKeys = [
+        "KeyZ", "KeyX", "KeyC", "KeyV", "KeyB", "KeyN", "KeyM", "Comma", "Period", "Slash", 
+        "KeyA", "KeyS", "KeyD", "KeyF", "KeyG", "KeyH", "KeyJ", "KeyK", "KeyL", "Semicolon", "Quote",
+        "KeyQ", "KeyW", "KeyE", "KeyR", "KeyT", "KeyY", "KeyU", "KeyI", "KeyO", "KeyP", "BracketLeft", "BracketRight", 
+    ];
+    const baseKeyboardOctave = 1;
+
     function fadeEnteredNumber() {
         show_entered_number = false;
         clearTimeout(entered_number_timeout);
@@ -314,6 +329,36 @@
 
             if (event.key === "Backspace") {
                 entered_number = entered_number.slice(0, -1);
+            }
+        }
+
+        // play a key if in "keys from notes" mode
+        if (keys_from_notes_active && keyboardKeys.includes(event.code)) {
+            const keyInd = keyboardKeys.indexOf(event.code);
+            const numKeys = keys_from_notes.length;
+            const octave = baseKeyboardOctave + Math.floor(keyInd/numKeys);
+            if (!keys_from_notes_is_played[octave][keyInd % numKeys]) {
+                if (octave < num_octaves) {
+                    const key = keys_from_notes[keyInd % numKeys];
+                    sampler_extra.triggerAttack(cents2hz(key, octave));
+                    keys_from_notes_is_played[octave][keyInd % numKeys] = true;
+                }
+            }
+        }
+    }
+
+    function handleKeyup(event: KeyboardEvent) {
+        // release a key if in "keys from notes" mode
+        if (keys_from_notes_active && keyboardKeys.includes(event.code)) {
+            const keyInd = keyboardKeys.indexOf(event.code);
+            const numKeys = keys_from_notes.length;
+            const octave = baseKeyboardOctave + Math.floor(keyInd/numKeys);
+            if (keys_from_notes_is_played[octave][keyInd % numKeys]) {
+                if (octave < num_octaves) {
+                    const key = keys_from_notes[keyInd % numKeys];
+                    sampler_extra.triggerRelease(cents2hz(key, octave));
+                    keys_from_notes_is_played[octave][keyInd % numKeys] = false;
+                }
             }
         }
     }
@@ -459,6 +504,8 @@
     let vol: Tone.Volume;
     let volume = $state(0.7);
 
+    let sampler_extra: Tone.Sampler;
+
     function notesToSampler() {
         sampler.unsync(); // i hope unsync-sync deletes triggerAttackRelease
         sampler.sync();
@@ -491,6 +538,14 @@
         vol = new Tone.Volume(20 * Math.log10(volume)).toDestination();
         sampler.connect(vol);
         sampler.sync();
+
+        // extra sampler for playing notes from pressing keys manually
+        sampler_extra = new Tone.Sampler({
+            urls: urls,
+            release: 2,
+            baseUrl: "https://tonejs.github.io/audio/salamander/",
+        });
+        sampler_extra.connect(vol);
 
         // move timeline slider
         Tone.getTransport().scheduleRepeat((time) => {
@@ -547,7 +602,7 @@
 </script>
 
 
-<svelte:window onkeydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} onkeyup={handleKeyup}/>
 
 <div id="entered_number_sign" style="--opacity: {show_entered_number ? 1 : 0}">
     {entered_number}
@@ -638,7 +693,8 @@
                         {#each Array.from({ length: num_octaves }) as _, octave}
                             {#each keys_from_notes as key, index}
                                 <KeyLineComponent y_px={(num_octaves - octave-key/1200)*octave_height_px}
-                                 cents={key} len_px={20} keyboard={true} text_shift={-40*(index%2)}/>
+                                 cents={key} len_px={20} keyboard={true} text_shift={-40*(index%2)}
+                                 is_played={keys_from_notes_is_played[octave][index]}/>
                             {/each}
                         {/each}
                     {:else}

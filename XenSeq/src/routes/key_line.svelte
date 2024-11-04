@@ -4,6 +4,7 @@
     export let cents = 0;
     export let keyboard = true; // line on keyboard or on panel
     export let text_shift = 0; // for keyboard
+    export let is_played = false; // for keyboard
 </script>
 
 
@@ -17,7 +18,7 @@
         stroke="var(--background-dark)"
         stroke-width="1.5"
         />
-        <text x={120-len_px-20+text_shift} y={y_px+5} fill="var(--light)" text-anchor="middle">
+        <text x={120-len_px-20+text_shift} y={y_px+5} fill={is_played ? "var(--green)" : "var(--light)"} text-anchor="middle">
             {Math.round(cents)}
         </text>
     {:else}

@@ -14,6 +14,7 @@
     <h1 style="text-align: center; margin-bottom: 10px; margin-top: 10px">OTHER</h1>
     <p> 1. Use Ctrl+Scroll to zoom in/out. </p>
     <p> 2. Use Spacebar to play/stop. </p>
+    <p> 3. Press "Z", "X", "C", ..., "A", "S", "D", ..., "Q", "W", "E", ... buttons while in "Define keys" mode to play notes. </p>
 </aside>
 
 
