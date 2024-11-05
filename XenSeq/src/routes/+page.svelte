@@ -337,12 +337,58 @@
             const keyInd = keyboardKeys.indexOf(event.code);
             const numKeys = keys_from_notes.length;
             const octave = baseKeyboardOctave + Math.floor(keyInd/numKeys);
-            if (!keys_from_notes_is_played[octave][keyInd % numKeys]) {
+            if (octave < num_octaves && !keys_from_notes_is_played[octave][keyInd % numKeys]) {
                 if (octave < num_octaves) {
                     const key = keys_from_notes[keyInd % numKeys];
                     sampler_extra.triggerAttack(cents2hz(key, octave));
                     keys_from_notes_is_played[octave][keyInd % numKeys] = true;
                 }
+            }
+        }
+
+        // move notes
+        if (event.code === "ArrowUp") {
+            event.preventDefault();
+            if (event.shiftKey) {
+                notes.filter(note => note.selected).forEach(note => {
+                    if (note.octave < num_octaves - 1) {
+                        note.octave += 1;
+                    }
+                });
+            } else {
+                notes.filter(note => note.selected).forEach(note => {
+                    note.octave = note.octave + Math.floor((note.cents + 1) / 1200); 
+                    note.cents = (note.cents + 1) % 1200;
+                    if (note.octave >= num_octaves) {
+                        note.octave = num_octaves - 1;
+                        note.cents = 1199;
+                    }
+                })
+            }
+        }
+
+        // move notes
+        if (event.code === "ArrowDown") {
+            event.preventDefault();
+            if (event.shiftKey) {
+                notes.filter(note => note.selected).forEach(note => {
+                    if (note.octave > 0) {
+                        note.octave -= 1;
+                    }
+                });
+            } else {
+                notes.filter(note => note.selected).forEach(note => {
+                    if (note.cents < 1) {
+                        if (note.octave > 0) {
+                            note.cents = 1200 + note.cents - 1;
+                            note.octave -= 1;
+                        } else {
+                            note.cents = 0;
+                        }
+                    } else {
+                        note.cents -= 1;
+                    }
+                });
             }
         }
     }
@@ -353,7 +399,7 @@
             const keyInd = keyboardKeys.indexOf(event.code);
             const numKeys = keys_from_notes.length;
             const octave = baseKeyboardOctave + Math.floor(keyInd/numKeys);
-            if (keys_from_notes_is_played[octave][keyInd % numKeys]) {
+            if (octave < num_octaves && keys_from_notes_is_played[octave][keyInd % numKeys]) {
                 if (octave < num_octaves) {
                     const key = keys_from_notes[keyInd % numKeys];
                     sampler_extra.triggerRelease(cents2hz(key, octave));
