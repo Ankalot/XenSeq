@@ -11,6 +11,7 @@
 
     // TODO:
     // 1) add mode that creates new keys based on notes in scale zone (CE * SHE)
+    // split the code into components??? I'm starting to get confused
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -24,16 +25,21 @@
 
     const min_note_duration = 1/32;
     let default_note_duration = 1/4;
+    let default_note_velocity = 1.0;
 
     let beats_per_measure = $state(4);
     let divisions_of_beat = $state(4);
     let bpm = $state(110);
+
+    let velocity_input = $state(1);
+    let show_velocity_input = $state(false);
 
     type Note = {
         octave: number,   // [0; num_octaves-1]  int       in number
         cents: number,    // [0; 1200)           float     in cents
         time: number,     // [0; num_measures]   float     in measures
         duration: number, // (0; ...)            float     in measures
+        velocity: number, // [0; 1]              float
         selected: boolean
     }
     let notes: Note[] = $state([]);
@@ -149,10 +155,12 @@
                 const cents_key = closestValue(keys_from_notes, cents_y);
                 const octave = y2octave(y);
                 notes.push({octave: octave, cents: cents_key, time: x2time(x),
-                             duration: default_note_duration, selected: false});
+                             duration: default_note_duration, velocity: default_note_velocity,
+                             selected: false});
             } else {
                 notes.push({octave: y2octave(y), cents: y2cents(y), time: x2time(x),
-                             duration: default_note_duration, selected: false});
+                             duration: default_note_duration, velocity: default_note_velocity,
+                             selected: false});
             }
         }
     }
@@ -254,6 +262,20 @@
     }
 
 
+    function changeNoteVelocity(index: number) {
+        show_velocity_input = !show_velocity_input;
+        velocity_input = notes[index].velocity;
+        notes[index].selected = true;
+    }
+
+    function onInputVelocityInput() {
+        notes.filter(note => note.selected).forEach(note => {
+            note.velocity = velocity_input;
+        });
+        //default_note_velocity = velocity_input;
+    }
+
+
     // ===================
     // ==== KEYBOARD  ====
     // ===================
@@ -292,6 +314,7 @@
         if (event.code == "Escape") {
             notes.forEach(note => note.selected = false);
             fadeEnteredNumber();
+            show_velocity_input = false;
         }
 
         if (event.ctrlKey && event.keyCode === 65) {
@@ -482,6 +505,7 @@
                 midi: note.octave*num_notes_in_scale + keys.indexOf(note.cents),
                 time: measures2seconds(note.time),
                 duration: measures2seconds(note.duration),
+                velocity: note.velocity,
             });
         });
         
@@ -532,6 +556,7 @@
                             cents: keys[note.midi % keys.length],
                             time: seconds2measures(note.time),
                             duration: seconds2measures(note.duration),
+                            velocity: note.velocity,
                             selected: false
                         }))
                     );
@@ -559,7 +584,8 @@
             sampler.triggerAttackRelease(
                 cents2hz(note.cents, note.octave), 
                 measures2seconds(note.duration),
-                measures2seconds(note.time)
+                measures2seconds(note.time),
+                note.velocity
             );
         });
     }
@@ -652,6 +678,18 @@
 
 <div id="entered_number_sign" style="--opacity: {show_entered_number ? 1 : 0}">
     {entered_number}
+</div>
+
+<div id = "velocity_input_wrapper" style=  "display: {show_velocity_input ? "block" : "none"};">
+    <input
+        oninput={onInputVelocityInput}
+        id = "velocity_input"
+        bind:value={velocity_input}
+        type="range"
+        min="0"
+        max="1"
+        step=".01"
+    />
 </div>
 
 <svelte:head>
@@ -822,13 +860,14 @@
                         {/each}
                     {/if}
 
-                    {#each notes as {octave, cents, time, duration, selected}, index}
+                    {#each notes as {octave, cents, time, duration, velocity, selected}, index}
                         <NoteLine note_x_px={time2x(time)} note_y_px={cents2y(cents, octave)}
-                        note_length={time2x(duration)} selected={selected}
+                        note_length={time2x(duration)} velocity={velocity} selected={selected}
                             removeNote = {() => removeNote(index)}
                             selectNote = {(shiftKey) => selectNote(index, shiftKey)}
                             startDragging = {(x, y) => startNoteDragging(index, x, y)}
-                            startResizing = {(x) => startNoteResizing(index, x)}/>
+                            startResizing = {(x) => startNoteResizing(index, x)}
+                            changeNoteVelocity = {() => changeNoteVelocity(index)}/>
                     {/each}
 
                     {#if isPlaying}
@@ -989,7 +1028,7 @@
         <div class = "bottom_panel_element">
             <h>Volume:</h>
             <input id="volume_input" type="range" min="0" max="1" bind:value={volume} step=".01" 
-            onchange={() => vol.volume.value = 20 * Math.log10(volume)}/>
+            oninput={() => vol.volume.value = 20 * Math.log10(volume)}/>
         </div>
     </div>
 </div>
@@ -1142,5 +1181,20 @@
         margin-left: 5px;
         width: 80px;
         accent-color: var(--light);
+    }
+
+    #velocity_input_wrapper {
+        background-color: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        z-index: 10;
+        position: absolute;
+        top: 80%;
+        left: 50%;
+        padding: 10px;
+    }
+
+    #velocity_input {
+        accent-color: var(--light);
+        width: 100px;
     }
 </style>

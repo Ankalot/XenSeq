@@ -2,6 +2,7 @@
     export let note_x_px = 100;
     export let note_y_px = 100;
     export let note_length = 100;
+    export let velocity = 1;
     export let selected = false;
 
 
@@ -18,6 +19,9 @@
         } else if (event.button === 2) {
             event.preventDefault();
             removeNote();
+        } else if (event.button === 1) {
+            event.preventDefault();
+            changeNoteVelocity();
         }
     }
 
@@ -32,6 +36,7 @@
     export let selectNote: (shiftKey: boolean) => void;
     export let startDragging: (initX: number, initY: number) => void;
     export let startResizing: (initX: number) => void;
+    export let changeNoteVelocity: () => void;
 </script>
 
 
@@ -55,7 +60,7 @@ onmouseenter={handleOnMouseEnter}>
     y1={note_y_px} 
     x2={note_x_px + note_length} 
     y2={note_y_px} 
-    stroke="var(--green)"
+    stroke="color-mix(in srgb, var(--green) {velocity * 100}%, var(--very-light) {(1 - velocity) * 100}%"
     stroke-width="10"
     cursor="pointer"
     />
