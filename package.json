@@ -8,7 +8,8 @@
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"deploy": "npm run build --force && npm install gh-pages"
+		"predeploy": "npm run build",
+		"deploy": "gh-pages -d build -t true"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^3.0.0",
@@ -16,7 +17,7 @@
 		"@sveltejs/kit": "^2.0.0",
 		"@sveltejs/vite-plugin-svelte": "^4.0.0",
 		"gh-pages": "^6.2.0",
-		"svelte": "^5.0.0",
+		"svelte": "^5.1.2",
 		"svelte-check": "^4.0.0",
 		"svelte-range-slider-pips": "^3.1.2",
 		"typescript": "^5.0.0",
@@ -24,6 +25,7 @@
 	},
 	"dependencies": {
 		"@tonejs/midi": "^2.0.28",
+		"build": "^0.1.4",
 		"tippy": "^0.0.0",
 		"tippy.js": "^6.3.7",
 		"tone": "^15.0.4"
