@@ -9,9 +9,17 @@
     import KeyLineComponent from "./key_line.svelte";
     import Sidebar from './sidebar.svelte';
 
+    import { SHE_possible_notes } from '$lib/SHE';
+    import { COE_possible_notes } from '$lib/COE';   
+    import { normalize, interpolateArray, findBestKeys } from '$lib/Functions';
+
     // TODO:
-    // 1) add mode that creates new keys based on notes in scale zone (CE * SHE)
-    // split the code into components??? I'm starting to get confused
+    // 1) make new keys with another color
+    // 2) click on left panel cents of a key to play a sound
+    // 3) make a menu of settings for new keys define
+    // 4) FIX BUG WHEN INVISIBLE NOTES ARE PLAYED 
+    // 5) split the code into components. I'm starting to get confused
+    // 6) add pitch memory 
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -89,7 +97,13 @@
     );
 
 
-    // is used when keys_from_notes_active == true; array of cents
+    let keys_from_notes_active = $state(false);
+    let new_keys_active = $state(false);
+
+    // keys when new_keys_active 
+    let new_keys: number[] = $state([]);
+
+    // keys when keys_from_notes_active
     let keys_from_notes: number[] = $derived(
         notes
         .filter(note => (time2x(note.time + note.duration) > scale_zone_factor*scale_zone_range[0]
@@ -99,13 +113,43 @@
         .map(item => item.cents).sort((a, b) => a - b)
     );
 
-    // array of all keys from keys_from_notes_active with octave transpositions
-    //    boolean indicates whether a note is currently played manually using keyboard
-    let keys_from_notes_is_played: boolean[][] = $state([]);
+    // new_keys + keys_from_notes
+    let keys: number[] = $derived(
+        (keys_from_notes_active ? keys_from_notes.concat(new_keys).sort((a, b) => a - b) : new_keys)
+    );
+
     $effect(() => {
-        keys_from_notes_is_played = Array.from(
+        if (new_keys_active && keys_from_notes.length > 0) {
+            let alpha = $state(0.5);
+            let dCents = $state(25);
+            let numNewKeys = $state(3);
+
+            const keys_noc = keys_from_notes.map(key => {
+                return notes.filter(note => note.cents === key).length
+            });
+
+            const new_keys_potential = Array.from({ length: 1200 }, (_, i) => i);
+            const notess_noc = [1, 1, 1, 1, 1, 1];
+
+            const COE_arr = COE_possible_notes(keys_from_notes, keys_noc, new_keys_potential).map(coe => 1 - coe);
+            const SHE_arr = normalize(SHE_possible_notes(keys_from_notes, new_keys_potential));
+            
+            
+            const COE_SHE_arr = $derived(interpolateArray(COE_arr, SHE_arr, alpha));
+
+            new_keys = findBestKeys(COE_SHE_arr, dCents, numNewKeys, new_keys_potential);
+        } else {
+            new_keys = [];
+        }
+    });
+
+    // array of all keys with octave transpositions
+    //    boolean indicates whether a note is currently played manually using keyboard
+    let keys_are_played: boolean[][] = $state([]);
+    $effect(() => {
+        keys_are_played = Array.from(
             { length: num_octaves },
-            () => Array(keys_from_notes.length).fill(false)
+            () => Array(keys.length).fill(false)
         );
     });
 
@@ -150,9 +194,9 @@
                 x = Math.floor(x/x_step)*x_step;
             }
 
-            if (keys_from_notes_active && keys_from_notes.length != 0) {
+            if ((keys_from_notes_active || new_keys_active) && keys.length != 0) {
                 const cents_y = y2cents(y);
-                const cents_key = closestValue(keys_from_notes, cents_y);
+                const cents_key = closestValue(keys, cents_y);
                 const octave = y2octave(y);
                 notes.push({octave: octave, cents: cents_key, time: x2time(x),
                              duration: default_note_duration, velocity: default_note_velocity,
@@ -193,7 +237,7 @@
                     note.time = 0;
                 }
 
-                if (!keys_from_notes_active) {
+                if (!keys_from_notes_active && !new_keys_active) {
                     const new_y = cents2y(note.cents, note.octave) + dy;
                     note.cents = y2cents(new_y);
                     note.octave = y2octave(new_y);
@@ -301,7 +345,7 @@
         show_entered_number = true;
 
         clearTimeout(entered_number_timeout);
-        entered_number_timeout = setTimeout(() => {
+        entered_number_timeout = window.setTimeout(() => {
             fadeEnteredNumber();
         }, 3000);
     }
@@ -356,15 +400,15 @@
         }
 
         // play a key if in "keys from notes" mode
-        if (keys_from_notes_active && keyboardKeys.includes(event.code)) {
+        if ((keys_from_notes_active || new_keys_active) && keyboardKeys.includes(event.code)) {
             const keyInd = keyboardKeys.indexOf(event.code);
-            const numKeys = keys_from_notes.length;
+            const numKeys = keys.length;
             const octave = baseKeyboardOctave + Math.floor(keyInd/numKeys);
-            if (octave < num_octaves && !keys_from_notes_is_played[octave][keyInd % numKeys]) {
+            if (octave < num_octaves && !keys_are_played[octave][keyInd % numKeys]) {
                 if (octave < num_octaves) {
-                    const key = keys_from_notes[keyInd % numKeys];
+                    const key = keys[keyInd % numKeys];
                     sampler_extra.triggerAttack(cents2hz(key, octave));
-                    keys_from_notes_is_played[octave][keyInd % numKeys] = true;
+                    keys_are_played[octave][keyInd % numKeys] = true;
                 }
             }
         }
@@ -418,15 +462,15 @@
 
     function handleKeyup(event: KeyboardEvent) {
         // release a key if in "keys from notes" mode
-        if (keys_from_notes_active && keyboardKeys.includes(event.code)) {
+        if ((keys_from_notes_active || new_keys_active) && keyboardKeys.includes(event.code)) {
             const keyInd = keyboardKeys.indexOf(event.code);
-            const numKeys = keys_from_notes.length;
+            const numKeys = keys.length;
             const octave = baseKeyboardOctave + Math.floor(keyInd/numKeys);
-            if (octave < num_octaves && keys_from_notes_is_played[octave][keyInd % numKeys]) {
+            if (octave < num_octaves && keys_are_played[octave][keyInd % numKeys]) {
                 if (octave < num_octaves) {
-                    const key = keys_from_notes[keyInd % numKeys];
+                    const key = keys[keyInd % numKeys];
                     sampler_extra.triggerRelease(cents2hz(key, octave));
-                    keys_from_notes_is_played[octave][keyInd % numKeys] = false;
+                    keys_are_played[octave][keyInd % numKeys] = false;
                 }
             }
         }
@@ -445,8 +489,6 @@
 
     let sidebar_is_opened = $state(false);
     let scale_zone_cents_active = $state(false);
-    let keys_from_notes_active = $state(false);
-    let keys_new_from_scale_zone_active = $state(false);
     let show_grid_active = $state(true);
     let snap_notes_to_grid_active = $state(true); 
 
@@ -773,12 +815,12 @@
                         </text>
                     {/each}
 
-                    {#if keys_from_notes_active}
+                    {#if keys_from_notes_active || new_keys_active}
                         {#each Array.from({ length: num_octaves }) as _, octave}
-                            {#each keys_from_notes as key, index}
+                            {#each keys as key, index}
                                 <KeyLineComponent y_px={(num_octaves - octave-key/1200)*octave_height_px}
                                  cents={key} len_px={20} keyboard={true} text_shift={-40*(index%2)}
-                                 is_played={keys_from_notes_is_played[octave][index]}/>
+                                 is_played={keys_are_played[octave][index]}/>
                             {/each}
                         {/each}
                     {:else}
@@ -847,9 +889,9 @@
                         {/each}
                     {/if}
 
-                    {#if keys_from_notes_active}
+                    {#if keys_from_notes_active || new_keys_active}
                         {#each Array.from({ length: num_octaves }) as _, octave}
-                            {#each keys_from_notes as key, index}
+                            {#each keys as key, index}
                                 <KeyLineComponent y_px={(num_octaves - octave-key/1200)*octave_height_px}
                                 cents={key} len_px={num_measures*measure_width_px} keyboard={false}/>
                             {/each}
@@ -904,7 +946,7 @@
             scale_zone_cents_active = !scale_zone_cents_active;
             if (scale_zone_cents_active) {
                 keys_from_notes_active = false;
-                keys_new_from_scale_zone_active = false;
+                new_keys_active = false;
             }
         }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 20 20" 
@@ -931,21 +973,19 @@
             </svg>
         </div>
 
-        <!--
         <div class = "bottom_panel_button"
-        use:tooltip={{ content: 'Create new keys in scale zone' }}
+        use:tooltip={{ content: 'Show new possible keys, based on notes in scale zone' }}
         onclick={() => {
-            keys_new_from_scale_zone_active = !keys_new_from_scale_zone_active;
-            if (keys_new_from_scale_zone_active) {
+            new_keys_active = !new_keys_active;
+            if (new_keys_active) {
                 scale_zone_cents_active = false;
             }
         }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 22" 
-            class="{keys_new_from_scale_zone_active ? 'active_button' : ''}">
+            class="{new_keys_active ? 'active_button' : ''}">
                 <path d="M7 8 7 0 23 0 23 8M7 22 7 14 23 14 23 22M0 12 0 10 30 10 30 12"/>
             </svg>
         </div>
-        -->
 
         <span class="vertical_separator"></span>
         <h style="margin-right: 15px;">Time:</h>
