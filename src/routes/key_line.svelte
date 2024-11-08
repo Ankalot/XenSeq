@@ -5,6 +5,7 @@
     export let keyboard = true; // line on keyboard or on panel
     export let text_shift = 0; // for keyboard
     export let is_played = false; // for keyboard
+    export let is_new_key = false;
 </script>
 
 
@@ -15,10 +16,14 @@
         y1={y_px}
         x2={120} 
         y2={y_px} 
-        stroke="var(--background-dark)"
+        stroke={is_new_key ? "var(--bluish-dark)" : "var(--background-dark)"}
         stroke-width="1.5"
         />
-        <text x={120-len_px-20+text_shift} y={y_px+5} fill={is_played ? "var(--green)" : "var(--light)"} text-anchor="middle">
+        <text x={120-len_px-20+text_shift} y={y_px+5} 
+        fill={is_played ? 
+        "var(--green)" : 
+        (is_new_key ? "var(--bluish-light)" : "var(--light)")}
+        text-anchor="middle">
             {Math.round(cents)}
         </text>
     {:else}
@@ -27,7 +32,7 @@
         y1={y_px}
         x2={len_px}
         y2={y_px}
-        stroke="var(--background-dark)"
+        stroke={is_new_key ? "var(--bluish-dark)" : "var(--background-dark)"}
         stroke-width="1.5"
         />
     {/if}

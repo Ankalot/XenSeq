@@ -14,12 +14,12 @@
     import { normalize, interpolateArray, findBestKeys } from '$lib/Functions';
 
     // TODO:
-    // 1) make new keys with another color
     // 2) click on left panel cents of a key to play a sound
     // 3) make a menu of settings for new keys define
     // 4) FIX BUG WHEN INVISIBLE NOTES ARE PLAYED 
-    // 5) split the code into components. I'm starting to get confused
-    // 6) add pitch memory 
+    // 5) FIX LONG PAGE LOADING 
+    // 6) split the code into components. I'm starting to get confused
+    // 7) add pitch memory 
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -820,7 +820,8 @@
                             {#each keys as key, index}
                                 <KeyLineComponent y_px={(num_octaves - octave-key/1200)*octave_height_px}
                                  cents={key} len_px={20} keyboard={true} text_shift={-40*(index%2)}
-                                 is_played={keys_are_played[octave][index]}/>
+                                 is_played={keys_are_played[octave][index]}
+                                 is_new_key={new_keys.includes(key)}/>
                             {/each}
                         {/each}
                     {:else}
@@ -893,7 +894,8 @@
                         {#each Array.from({ length: num_octaves }) as _, octave}
                             {#each keys as key, index}
                                 <KeyLineComponent y_px={(num_octaves - octave-key/1200)*octave_height_px}
-                                cents={key} len_px={num_measures*measure_width_px} keyboard={false}/>
+                                cents={key} len_px={num_measures*measure_width_px} keyboard={false} 
+                                is_new_key={new_keys.includes(key)}/>
                             {/each}
                         {/each}
                     {:else}
