@@ -14,7 +14,7 @@
     import { normalize, interpolateArray, findBestKeys } from '$lib/Functions';
 
     // TODO:
-    // 2) make a menu of settings for new keys define
+    // 2) when resizing notes make it snap to the right to (floor -> round)
     // 3) make calculating new keys async
     // 4) FIX BUG WHEN INVISIBLE NOTES ARE PLAYED 
     // 5) FIX LONG PAGE LOADING 
@@ -118,11 +118,11 @@
         (keys_from_notes_active ? keys_from_notes.concat(new_keys).sort((a, b) => a - b) : new_keys)
     );
 
+    let alpha = $state(0.5);
+    let dCents = $state(25);
+    let numNewKeys = $state(3);
     $effect(() => {
         if (new_keys_active && keys_from_notes.length > 0) {
-            let alpha = $state(0.5);
-            let dCents = $state(25);
-            let numNewKeys = $state(3);
 
             const keys_noc = keys_from_notes.map(key => {
                 return notes.filter(note => note.cents === key).length
@@ -137,7 +137,7 @@
             
             const COE_SHE_arr = $derived(interpolateArray(COE_arr, SHE_arr, alpha));
 
-            new_keys = findBestKeys(COE_SHE_arr, dCents, numNewKeys, new_keys_potential);
+            new_keys = findBestKeys(COE_SHE_arr, dCents, numNewKeys, new_keys_potential, keys_from_notes);
         } else {
             new_keys = [];
         }
@@ -729,6 +729,9 @@
             keys_are_played[octave][keyInd] = false;
         }
     }
+
+
+    let new_keys_button_is_hovered = $state(false);
 </script>
 
 
@@ -995,18 +998,49 @@
             </svg>
         </div>
 
-        <div class = "bottom_panel_button"
-        use:tooltip={{ content: 'Show new possible keys, based on notes in scale zone' }}
-        onclick={() => {
-            new_keys_active = !new_keys_active;
-            if (new_keys_active) {
-                scale_zone_cents_active = false;
-            }
-        }}>
+        <div class = "bottom_panel_element"
+        onmouseenter={() => new_keys_button_is_hovered = true} 
+        onmouseleave={() => new_keys_button_is_hovered = false}>
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 22" 
-            class="{new_keys_active ? 'active_button' : ''}">
+            class="{new_keys_active ? 'active_button' : ''}" style="cursor: pointer;"
+            onclick={() => {
+                new_keys_active = !new_keys_active;
+                if (new_keys_active) {
+                    scale_zone_cents_active = false;
+                }
+            }}>
                 <path d="M7 8 7 0 23 0 23 8M7 22 7 14 23 14 23 22M0 12 0 10 30 10 30 12"/>
             </svg>
+            {#if new_keys_button_is_hovered}
+                <div id="new_keys_settings_dropdown"
+                onmouseenter={() => new_keys_button_is_hovered = true}>
+                    <div>
+                        <h style="color: var(--very-dark);">Min distance between keys in cents:</h>
+                        <input 
+                            id = "keys_setting_input"
+                            bind:value={dCents}
+                            type="number" 
+                            min="0"
+                            max="1200"
+                        />
+                    </div>
+                    <div>
+                        <h style="color: var(--very-dark);">Number of new keys:</h>
+                        <input 
+                            id = "keys_setting_input"
+                            bind:value={numNewKeys}
+                            type="number" 
+                            min="1"
+                            max="20"
+                        />
+                    </div>
+                    <div>
+                        <h style="color: var(--very-dark);">Harmonicity</h>
+                        <input id="alpha_input" type="range" min="0" max="1" bind:value={alpha} step=".01"/>
+                        <h style="color: var(--very-dark);">Diversity</h>
+                    </div>
+                </div>
+            {/if}
         </div>
 
         <span class="vertical_separator"></span>
@@ -1258,5 +1292,31 @@
     #velocity_input {
         accent-color: var(--light);
         width: 100px;
+    }
+
+    #new_keys_settings_dropdown {
+        position: absolute;
+        top: calc(100vh - 153px);
+        left: 120px;
+        background-color: var(--light);
+        border: 1px solid #ccc;
+        padding: 5px;
+        border-radius: 5px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #keys_setting_input {
+        color: var(--very-dark);
+        background-color: var(--light);
+        height: 24px;
+        width: 50px;
+        padding-left: 5px;
+    }
+
+    #alpha_input {
+        margin-left: 5px;
+        width: 150px;
+        accent-color: var(--background-dark);
     }
 </style>

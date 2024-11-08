@@ -58,10 +58,23 @@ export function findBestKeys(
         metric_arr: number[],
         dCents: number,
         numNewKeys: number,
-        new_keys_potential: number[]
-        ): number[] {
+        new_keys_potential: number[],
+        keys_from_notes: number[]): number[] {
     
     let bestKeys: number[] = [];
+
+    for (let i = 0; i < keys_from_notes.length; i++) {
+        let j = 0;
+        while (j < new_keys_potential.length) {
+            if (Math.abs(keys_from_notes[i] - new_keys_potential[j]) < dCents ||
+                    1200 - Math.abs(keys_from_notes[i] - new_keys_potential[j]) < dCents) {
+                new_keys_potential.splice(j, 1);
+                metric_arr.splice(j, 1);
+            } else {
+                j++;
+            }
+        }
+    }
     
     for (let i = 0; i < numNewKeys; i++) {
         const mini = indexOfMin(metric_arr);
@@ -70,7 +83,8 @@ export function findBestKeys(
         
         let j = 0;
         while (j < new_keys_potential.length) {
-            if (Math.abs(newKey - new_keys_potential[j]) < dCents) {
+            if (Math.abs(newKey - new_keys_potential[j]) < dCents ||
+                    1200 - Math.abs(newKey - new_keys_potential[j]) < dCents) {
                 new_keys_potential.splice(j, 1);
                 metric_arr.splice(j, 1);
             } else {
