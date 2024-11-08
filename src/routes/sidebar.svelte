@@ -20,6 +20,7 @@
     <p> 1. Use Ctrl+Scroll to zoom in/out. </p>
     <p> 2. Use Spacebar to play/stop. </p>
     <p> 3. Press "Z", "X", "C", ..., "A", "S", "D", ..., "Q", "W", "E", ... buttons while in "Define keys" mode to play notes. </p>
+    <p> 4. Click on cents of the notes on the left panel to play them. </p>
 </aside>
 
 

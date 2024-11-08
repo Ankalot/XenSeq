@@ -14,8 +14,8 @@
     import { normalize, interpolateArray, findBestKeys } from '$lib/Functions';
 
     // TODO:
-    // 2) click on left panel cents of a key to play a sound
-    // 3) make a menu of settings for new keys define
+    // 2) make a menu of settings for new keys define
+    // 3) make calculating new keys async
     // 4) FIX BUG WHEN INVISIBLE NOTES ARE PLAYED 
     // 5) FIX LONG PAGE LOADING 
     // 6) split the code into components. I'm starting to get confused
@@ -713,6 +713,22 @@
         
         play();
     }
+
+    function handleKeyMousedown(octave: number, keyInd: number) {
+        if (!keys_are_played[octave][keyInd]) {
+            const key = keys[keyInd];
+            sampler_extra.triggerAttack(cents2hz(key, octave));
+            keys_are_played[octave][keyInd] = true;
+        }
+    }
+
+    function handleKeyMouseup(octave: number, keyInd: number) {
+        if (keys_are_played[octave][keyInd]) {
+            const key = keys[keyInd];
+            sampler_extra.triggerRelease(cents2hz(key, octave));
+            keys_are_played[octave][keyInd] = false;
+        }
+    }
 </script>
 
 
@@ -810,7 +826,8 @@
 
                     {#each Array(num_octaves) as _, index}
                         <text x="18" y="{octave_height_px * (0.5 + index)}" fill="var(--very-dark)"
-                        text-anchor="middle" transform="rotate(-90, 18, {octave_height_px * (0.5 + index)})">
+                        text-anchor="middle" transform="rotate(-90, 18, {octave_height_px * (0.5 + index)})"
+                        style="user-select: none;">
                             {"OCTAVE " + (num_octaves - index - 1)}
                         </text>
                     {/each}
@@ -821,7 +838,10 @@
                                 <KeyLineComponent y_px={(num_octaves - octave-key/1200)*octave_height_px}
                                  cents={key} len_px={20} keyboard={true} text_shift={-40*(index%2)}
                                  is_played={keys_are_played[octave][index]}
-                                 is_new_key={new_keys.includes(key)}/>
+                                 is_new_key={new_keys.includes(key)}
+                                 keyOnMousedown={() => handleKeyMousedown(octave, index)}
+                                 keyOnMouseup={() => handleKeyMouseup(octave, index)}
+                                 />
                             {/each}
                         {/each}
                     {:else}
