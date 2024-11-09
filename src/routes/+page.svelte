@@ -14,7 +14,7 @@
     import { normalize, interpolateArray, findBestKeys } from '$lib/Functions';
 
     // TODO:
-    // 2) when resizing notes make it snap to the right to (floor -> round)
+    // 1) make scrollable sidebar
     // 3) make calculating new keys async
     // 4) FIX BUG WHEN INVISIBLE NOTES ARE PLAYED 
     // 5) FIX LONG PAGE LOADING 
@@ -260,7 +260,7 @@
             if (snap_notes_to_grid_active) {
                 selectedNotes.forEach(note => {
                     const x_step = measure_width_px/(divisions_of_beat*beats_per_measure);
-                    note.time = x2time(Math.floor(time2x(note.time)/x_step)*x_step);
+                    note.time = x2time(Math.round(time2x(note.time)/x_step)*x_step);
                 });
             }
             window.removeEventListener('mousemove', mouseMoveHandler);
@@ -293,7 +293,7 @@
             if (snap_notes_to_grid_active) {
                 selectedNotes.forEach(note => {
                     const x_step = measure_width_px/(divisions_of_beat*beats_per_measure);
-                    note.duration = x2time(Math.max(Math.floor(time2x(note.duration)/x_step), 1)*x_step);
+                    note.duration = x2time(Math.max(Math.round(time2x(note.duration)/x_step), 1)*x_step);
                     default_note_duration = note.duration;
                 });
             }
