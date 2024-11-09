@@ -35,6 +35,7 @@
         padding: 20px;
         opacity: 0;
         visibility: hidden;
+        overflow-y: scroll;
 	}
 	
 	.open {

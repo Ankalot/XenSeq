@@ -14,7 +14,6 @@
     import { normalize, interpolateArray, findBestKeys } from '$lib/Functions';
 
     // TODO:
-    // 1) make scrollable sidebar
     // 3) make calculating new keys async
     // 4) FIX BUG WHEN INVISIBLE NOTES ARE PLAYED 
     // 5) FIX LONG PAGE LOADING 
