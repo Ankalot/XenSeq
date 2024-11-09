@@ -9,16 +9,10 @@
     import KeyLineComponent from "./key_line.svelte";
     import Sidebar from './sidebar.svelte';
 
-    import { SHE_possible_notes } from '$lib/SHE';
-    import { COE_possible_notes } from '$lib/COE';   
-    import { normalize, interpolateArray, findBestKeys } from '$lib/Functions';
-
     // TODO:
-    // 3) make calculating new keys async
-    // 4) FIX BUG WHEN INVISIBLE NOTES ARE PLAYED 
-    // 5) FIX LONG PAGE LOADING 
-    // 6) split the code into components. I'm starting to get confused
-    // 7) add pitch memory 
+    // 1) split the code into components. I'm starting to get confused
+    // 2) FIX LONG PAGE LOADING
+    // 3) add pitch memory 
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -120,25 +114,33 @@
     let alpha = $state(0.5);
     let dCents = $state(25);
     let numNewKeys = $state(3);
-    $effect(() => {
-        if (new_keys_active && keys_from_notes.length > 0) {
 
-            const keys_noc = keys_from_notes.map(key => {
-                return notes.filter(note => note.cents === key).length
-            });
+    let worker_newKeys: Worker;
+    let computingNewKeys = $state(false);
 
-            const new_keys_potential = Array.from({ length: 1200 }, (_, i) => i);
-            const notess_noc = [1, 1, 1, 1, 1, 1];
+    $effect(() => {       
+        if (worker_newKeys != undefined) {
+            worker_newKeys.terminate();
+            computingNewKeys = false;
+        }
 
-            const COE_arr = COE_possible_notes(keys_from_notes, keys_noc, new_keys_potential).map(coe => 1 - coe);
-            const SHE_arr = normalize(SHE_possible_notes(keys_from_notes, new_keys_potential));
-            
-            
-            const COE_SHE_arr = $derived(interpolateArray(COE_arr, SHE_arr, alpha));
+        worker_newKeys = new Worker(new URL(`./worker_newKeys.ts`, import.meta.url), {type: 'module'});
+        worker_newKeys.onmessage = (event: MessageEvent) => {
+            computingNewKeys = false;
+            new_keys = event.data;
+        };
 
-            new_keys = findBestKeys(COE_SHE_arr, dCents, numNewKeys, new_keys_potential, keys_from_notes);
-        } else {
-            new_keys = [];
+        worker_newKeys.postMessage({
+            new_keys_active: $state.snapshot(new_keys_active),
+            keys_from_notes: $state.snapshot(keys_from_notes),
+            notes: $state.snapshot(notes),
+            alpha: $state.snapshot(alpha),
+            dCents: $state.snapshot(dCents),
+            numNewKeys: $state.snapshot(numNewKeys)
+        });
+
+        if (new_keys_active) {
+            computingNewKeys = true;
         }
     });
 
@@ -736,6 +738,8 @@
 
 <svelte:window onkeydown={handleKeydown} onkeyup={handleKeyup}/>
 
+<div class="gear {computingNewKeys ? 'visible' : ''}"></div>
+
 <div id="entered_number_sign" style="--opacity: {show_entered_number ? 1 : 0}">
     {entered_number}
 </div>
@@ -1238,6 +1242,7 @@
 
     .bottom_panel_element {
         margin-right: 15px;
+        user-select: none;
     }
 
     .active_button {
@@ -1307,7 +1312,8 @@
 
     #keys_setting_input {
         color: var(--very-dark);
-        background-color: var(--light);
+        border-radius: 5px;
+        background-color: var(--very-light);
         height: 24px;
         width: 50px;
         padding-left: 5px;
@@ -1317,5 +1323,28 @@
         margin-left: 5px;
         width: 150px;
         accent-color: var(--background-dark);
+    }
+
+    .gear {
+        position: absolute;
+        top: 90px;
+        left: 150px;
+        width: 40px;
+        height: 40px;
+        border: 8px solid var(--light);
+        border-top: 8px solid var(--background-medium);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+        visibility: hidden;
+    }
+
+    .gear.visible {
+        visibility: visible;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
 </style>
