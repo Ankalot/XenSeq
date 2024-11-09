@@ -8,11 +8,17 @@
     import NoteLine from "./note.svelte";
     import KeyLineComponent from "./key_line.svelte";
     import Sidebar from './sidebar.svelte';
+    import PlayButton from './play_button.svelte';
+    import Timeline from './timeline.svelte';
+    import PanelButton from './panel_button.svelte';
+    import NewKeysButton from './new_keys_button.svelte';
+    import LoadingIndicator from './loading_indicator.svelte';
+
 
     // TODO:
-    // 1) split the code into components. I'm starting to get confused
     // 2) FIX LONG PAGE LOADING
-    // 3) add pitch memory 
+    // 3) add several instruments: electric guitar, acoustic guitar, some cool synth, phonk cowbell
+    // 4) add pitch memory 
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -118,6 +124,7 @@
     let worker_newKeys: Worker;
     let computingNewKeys = $state(false);
 
+    // calculating new keys
     $effect(() => {       
         if (worker_newKeys != undefined) {
             worker_newKeys.terminate();
@@ -362,12 +369,12 @@
             show_velocity_input = false;
         }
 
-        if (event.ctrlKey && event.keyCode === 65) {
+        if (event.ctrlKey && event.code == "KeyA") {
             event.preventDefault();
             notes.forEach(note => note.selected = true);
         }
 
-        if (event.key == " ") {
+        if (event.code == "Space") {
             event.preventDefault();
             play();
         }
@@ -500,8 +507,8 @@
     let scale_zone_range = $state([scale_zone_min, scale_zone_max]);
     let scale_zone_factor = $derived(num_measures*measure_width_px/scale_zone_max);
 
-    type KeyLine = {y_px: number, cents: number};
     // is used for selected notes or "show cents of notes in scale zone" mode
+    type KeyLine = {y_px: number, cents: number};
     let keyLines: KeyLine[] = $derived(
         (scale_zone_cents_active ? 
             notes.filter(note => (
@@ -621,7 +628,7 @@
     let sampler_extra: Tone.Sampler;
 
     function notesToSampler() {
-        sampler.unsync(); // i hope unsync-sync deletes triggerAttackRelease
+        sampler.unsync(); // unsync-sync deletes triggerAttackRelease
         sampler.sync();
         notes.forEach(note => {
             sampler.triggerAttackRelease(
@@ -730,15 +737,12 @@
             keys_are_played[octave][keyInd] = false;
         }
     }
-
-
-    let new_keys_button_is_hovered = $state(false);
 </script>
 
 
 <svelte:window onkeydown={handleKeydown} onkeyup={handleKeyup}/>
 
-<div class="gear {computingNewKeys ? 'visible' : ''}"></div>
+<LoadingIndicator active={computingNewKeys}/>
 
 <div id="entered_number_sign" style="--opacity: {show_entered_number ? 1 : 0}">
     {entered_number}
@@ -764,17 +768,10 @@
 <div id = "sequencer">
     <div id = "scale_zones_and_timeline_wrapper">
         <div id = "blank">
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <div style="margin-top: 15px; margin-left: 5px; cursor: pointer;" onclick={play}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="none" viewBox="0 0 24 24">
-                    <path stroke="var(--light)" stroke-width="2" stroke-linejoin="round" d={isPlaying ? 
-                    "M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z"
-                    :
-                    "M16.6582 9.28638C18.098 10.1862 18.8178 10.6361 19.0647 11.2122C19.2803 11.7152 19.2803 12.2847 19.0647 12.7878C18.8178 13.3638 18.098 13.8137 16.6582 14.7136L9.896 18.94C8.29805 19.9387 7.49907 20.4381 6.83973 20.385C6.26501 20.3388 5.73818 20.0469 5.3944 19.584C5 19.053 5 18.1108 5 16.2264V7.77357C5 5.88919 5 4.94701 5.3944 4.41598C5.73818 3.9531 6.26501 3.66111 6.83973 3.6149C7.49907 3.5619 8.29805 4.06126 9.896 5.05998L16.6582 9.28638Z"
-                    }></path>
-                </svg>
-            </div>
+            <PlayButton
+                handleOnclick={play}
+                isPlaying={isPlaying}
+            />
 
             <div style="margin-top: 15px; margin-left: 5px;"
             use:tooltip={{ content: '0 cents Octave 0, Hz' }}>
@@ -793,24 +790,13 @@
                 <ScaleZoneSlider min_val={scale_zone_min} max_val={scale_zone_max} 
                 bind:values={scale_zone_range}/>
             </div>
-            <div id = "timeline">
-                {#if isPlaying}
-                    <svg
-                    style="left: {seconds2measures(timelineValue)*measure_width_px}px; position: absolute; margin-left: -15px;"
-                    xmlns="http://www.w3.org/2000/svg" width="30" height="28" fill="var(--green)" viewBox="0 0 30 28">
-                        <path d="M0 0 14 28 16 28 30 0 0 0"></path>
-                    </svg>
-                {/if}
-
-                {#each Array.from({ length: num_measures }) as _, index}
-                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                    <div class="measure" style="width: {measure_width_px}px;"
-                    onclick={e => measureClick(e, index)}>
-                        {index + 1}
-                    </div>
-                {/each}
-            </div>
+            <Timeline
+                isPlaying={isPlaying}
+                playhead_x={seconds2measures(timelineValue)*measure_width_px}
+                num_measures={num_measures}
+                measure_width_px={measure_width_px}
+                handleMeasureClick={measureClick}
+            />
         </div>
     </div>
 
@@ -931,13 +917,18 @@
                     {/if}
 
                     {#each notes as {octave, cents, time, duration, velocity, selected}, index}
-                        <NoteLine note_x_px={time2x(time)} note_y_px={cents2y(cents, octave)}
-                        note_length={time2x(duration)} velocity={velocity} selected={selected}
+                        <NoteLine 
+                            note_x_px={time2x(time)}
+                            note_y_px={cents2y(cents, octave)}
+                            note_length={time2x(duration)}
+                            velocity={velocity}
+                            selected={selected}
                             removeNote = {() => removeNote(index)}
                             selectNote = {(shiftKey) => selectNote(index, shiftKey)}
                             startDragging = {(x, y) => startNoteDragging(index, x, y)}
                             startResizing = {(x) => startNoteResizing(index, x)}
-                            changeNoteVelocity = {() => changeNoteVelocity(index)}/>
+                            changeNoteVelocity = {() => changeNoteVelocity(index)}
+                        />
                     {/each}
 
                     {#if isPlaying}
@@ -955,102 +946,57 @@
         </div>
     </div>
 
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div id = "bottom_panel_wrapper">
-        <div class = "bottom_panel_button"
-        use:tooltip={{ content: 'Show help' }}
-        onclick={() => {sidebar_is_opened = !sidebar_is_opened}}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 16 16"
-            class="{sidebar_is_opened ? 'active_button' : ''}">
-                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
-                <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"/>
-            </svg>
-        </div>
+        <PanelButton
+            tooltip_text="Show help"
+            handleOnclick={() => {sidebar_is_opened = !sidebar_is_opened}}
+            active={sidebar_is_opened}
+            svgViewBox="0 0 16 16"
+            svg_path_d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16 M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"
+        />
 
-        <div class = "bottom_panel_button"
-        use:tooltip={{ content: 'Show cents of notes in scale zone' }}
-        onclick={() => {
-            scale_zone_cents_active = !scale_zone_cents_active;
-            if (scale_zone_cents_active) {
-                keys_from_notes_active = false;
-                new_keys_active = false;
-            }
-        }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 20 20" 
-            class="{scale_zone_cents_active ? 'active_button' : ''}">
-                <path d="M18-.0004c1.104 0 2 .896 2 2v16c0 1.0004-.896 2-2 2H2c-1.104 0-2-.895-2-2v-16c0-1.104.896-2 2-2h16m-16 3v2.201l3.272-3.201H3c-.552 0-1 .448-1 1Zm0 5.03v2.828l8.929-8.858h-2.828l-6.101 6.03Zm0 5.657v2.828l14.586-14.515h-2.829L2 13.6866Zm16 3.313v-2.343l-3.272 3.343H17c.552 0 1-.447 1-1Zm0-5.171v-2.829l-8.929 9h2.828l6.101-6.171Zm0-5.657v-2.828l-14.586 14.656h2.829L18 6.1716Z"/>
-            </svg>
-        </div>
+        <PanelButton
+            tooltip_text="Show cents of notes in scale zone"
+            handleOnclick={() => {
+                scale_zone_cents_active = !scale_zone_cents_active;
+                if (scale_zone_cents_active) {
+                    keys_from_notes_active = false;
+                    new_keys_active = false;
+                }
+            }}
+            active={scale_zone_cents_active}
+            svgViewBox="0 0 20 20"
+            svg_path_d="M18-.0004c1.104 0 2 .896 2 2v16c0 1.0004-.896 2-2 2H2c-1.104 0-2-.895-2-2v-16c0-1.104.896-2 2-2h16m-16 3v2.201l3.272-3.201H3c-.552 0-1 .448-1 1Zm0 5.03v2.828l8.929-8.858h-2.828l-6.101 6.03Zm0 5.657v2.828l14.586-14.515h-2.829L2 13.6866Zm16 3.313v-2.343l-3.272 3.343H17c.552 0 1-.447 1-1Zm0-5.171v-2.829l-8.929 9h2.828l6.101-6.171Zm0-5.657v-2.828l-14.586 14.656h2.829L18 6.1716Z"
+        />
 
         <span class="vertical_separator"></span>
-        <h style="margin-right: 15px;"
-        use:tooltip={{ content: 'Create notes using keys' }}>Define keys:</h>
+        <h style="margin-right: 15px; user-select: none;">Define keys:</h>
 
-        <div class = "bottom_panel_button"
-        use:tooltip={{ content: 'Use notes from scale zone' }}
-        onclick={() => {
-            keys_from_notes_active = !keys_from_notes_active;
-            if (keys_from_notes_active) {
-                scale_zone_cents_active = false;
-            }
-        }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 21" 
-            class="{keys_from_notes_active ? 'active_button' : ''}">
-                <path d="M0 3 7 3 7 0 23 0 23 3 30 3 30 5 23 5 23 8 7 8 7 5 0 5M0 17 7 17 7 14 23 14 23 17 30 17 30 19 23 19 23 22 7 22 7 19 0 19"/>
-            </svg>
-        </div>
-
-        <div class = "bottom_panel_element"
-        onmouseenter={() => new_keys_button_is_hovered = true} 
-        onmouseleave={() => new_keys_button_is_hovered = false}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 22" 
-            class="{new_keys_active ? 'active_button' : ''}" style="cursor: pointer;"
-            onclick={() => {
-                new_keys_active = !new_keys_active;
-                if (new_keys_active) {
+        <PanelButton
+            tooltip_text="Use notes from scale zone"
+            handleOnclick={() => {
+                keys_from_notes_active = !keys_from_notes_active;
+                if (keys_from_notes_active) {
                     scale_zone_cents_active = false;
                 }
-            }}>
-                <path d="M7 8 7 0 23 0 23 8M7 22 7 14 23 14 23 22M0 12 0 10 30 10 30 12"/>
-            </svg>
-            {#if new_keys_button_is_hovered}
-                <div id="new_keys_settings_dropdown"
-                onmouseenter={() => new_keys_button_is_hovered = true}>
-                    <div>
-                        <h style="color: var(--very-dark);">Min distance between keys in cents:</h>
-                        <input 
-                            id = "keys_setting_input"
-                            bind:value={dCents}
-                            type="number" 
-                            min="0"
-                            max="1200"
-                        />
-                    </div>
-                    <div>
-                        <h style="color: var(--very-dark);">Number of new keys:</h>
-                        <input 
-                            id = "keys_setting_input"
-                            bind:value={numNewKeys}
-                            type="number" 
-                            min="1"
-                            max="20"
-                        />
-                    </div>
-                    <div>
-                        <h style="color: var(--very-dark);">Harmonicity</h>
-                        <input id="alpha_input" type="range" min="0" max="1" bind:value={alpha} step=".01"/>
-                        <h style="color: var(--very-dark);">Diversity</h>
-                    </div>
-                </div>
-            {/if}
-        </div>
+            }}
+            active={keys_from_notes_active}
+            svgViewBox="0 0 30 21"
+            svg_path_d="M0 3 7 3 7 0 23 0 23 3 30 3 30 5 23 5 23 8 7 8 7 5 0 5M0 17 7 17 7 14 23 14 23 17 30 17 30 19 23 19 23 22 7 22 7 19 0 19"
+        />
+
+        <NewKeysButton
+            bind:new_keys_active={new_keys_active}
+            bind:scale_zone_cents_active={scale_zone_cents_active}
+            bind:dCents={dCents}
+            bind:numNewKeys={numNewKeys}
+            bind:alpha={alpha}
+        />
 
         <span class="vertical_separator"></span>
-        <h style="margin-right: 15px;">Time:</h>
 
         <div class = "bottom_panel_element">
-            <h>Signature:</h>
+            <h>Time Signature:</h>
             <select id="beats_per_measure_select" bind:value={beats_per_measure}>
                 <option value={2}>2/4</option>
                 <option value={3}>3/4</option>
@@ -1073,23 +1019,21 @@
             </select>
         </div>
 
-        <div class = "bottom_panel_button"
-        use:tooltip={{ content: 'Show grid' }}
-        onclick={() => { show_grid_active = !show_grid_active; }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 30" 
-            class="{show_grid_active ? 'active_button' : ''}">
-                <path d="M6 0 6 7 0 7 0 9 6 9 6 21 0 21 0 23 6 23 6 30 8 30 8 23 14 23 14 30 16 30 16 23 22 23 22 30 24 30 24 23 30 23 30 21 24 21 24 9 30 9 30 7 24 7 24 0 22 0 22 7 16 7 16 0 14 0 14 7 8 7 8 0M8 9 14 9 14 21 8 21M16 9 22 9 22 21 16 21"/>
-            </svg>
-        </div>
+        <PanelButton
+            tooltip_text="Show grid"
+            handleOnclick={() => { show_grid_active = !show_grid_active; }}
+            active={show_grid_active}
+            svgViewBox="0 0 30 30"
+            svg_path_d="M6 0 6 7 0 7 0 9 6 9 6 21 0 21 0 23 6 23 6 30 8 30 8 23 14 23 14 30 16 30 16 23 22 23 22 30 24 30 24 23 30 23 30 21 24 21 24 9 30 9 30 7 24 7 24 0 22 0 22 7 16 7 16 0 14 0 14 7 8 7 8 0M8 9 14 9 14 21 8 21M16 9 22 9 22 21 16 21"
+        />
 
-        <div class = "bottom_panel_button"
-        use:tooltip={{ content: 'Snap notes to grid' }}
-        onclick={() => { snap_notes_to_grid_active = !snap_notes_to_grid_active; }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 30 30" 
-            class="{snap_notes_to_grid_active ? 'active_button' : ''}">
-                <path d="M6 0 6 4 0 4 0 12 6 12 6 21 0 21 0 23 6 23 6 30 8 30 8 23 14 23 14 30 16 30 16 26 22 26 22 30 24 30 24 23 30 23 30 21 24 21 24 9 30 9 30 7 24 7 24 0 22 0 22 7 16 7 16 0 14 0 14 4 8 4 8 0M8 12 14 12 14 21 8 21M16 9 22 9 22 18 16 18"/>
-            </svg>
-        </div>
+        <PanelButton
+            tooltip_text="Snap notes to grid"
+            handleOnclick={() => { snap_notes_to_grid_active = !snap_notes_to_grid_active; }}
+            active={snap_notes_to_grid_active}
+            svgViewBox="0 0 30 30"
+            svg_path_d="M6 0 6 4 0 4 0 12 6 12 6 21 0 21 0 23 6 23 6 30 8 30 8 23 14 23 14 30 16 30 16 26 22 26 22 30 24 30 24 23 30 23 30 21 24 21 24 9 30 9 30 7 24 7 24 0 22 0 22 7 16 7 16 0 14 0 14 4 8 4 8 0M8 12 14 12 14 21 8 21M16 9 22 9 22 18 16 18"
+        />
 
         <div class = "bottom_panel_element">
             <h>BPM:</h>
@@ -1103,24 +1047,23 @@
         </div>
 
         <span class="vertical_separator"></span>
-        <h style="margin-right: 15px;">File:</h>
 
-        <div class = "bottom_panel_button"
-        use:tooltip={{ content: 'Import Sequence (.mid + .scl files)' }}
-        onclick={() => { document.getElementById('import_files')?.click(); }}>
-            <input id="import_files" type="file" accept=".mid,.scl" multiple onchange={importSequence} style="display: none;"/>
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 24 24">
-                <path d="m19.949,5.536l-3.484-3.486c-1.323-1.322-3.081-2.05-4.95-2.05h-4.515C4.243,0,2,2.243,2,5v6c0,.552.447,1,1,1s1-.448,1-1v-6c0-1.654,1.346-3,3-3h4.515c.163,0,.325.008.485.023v4.977c0,1.654,1.346,3,3,3h4.977c.015.16.023.322.023.485v8.515c0,1.654-1.346,3-3,3H7c-1.654,0-3-1.346-3-3,0-.552-.447-1-1-1s-1,.448-1,1c0,2.757,2.243,5,5,5h10c2.757,0,5-2.243,5-5v-8.515c0-1.871-.729-3.628-2.051-4.95Zm-4.949,2.464c-.552,0-1-.449-1-1V2.659c.38.218.733.487,1.051.805l3.484,3.486c.318.317.587.67.805,1.05h-4.341Zm-4.602,8H1c-.553,0-1-.448-1-1s.447-1,1-1h9.398l-1.293-1.293c-.391-.391-.391-1.024,0-1.414.391-.391,1.023-.391,1.414,0l1.613,1.614c1.154,1.154,1.154,3.032,0,4.187l-1.613,1.614c-.195.195-.451.293-.707.293s-.512-.098-.707-.293c-.391-.39-.391-1.023,0-1.414l1.293-1.293Z"></path>
-            </svg>
-        </div>
+        <PanelButton
+            tooltip_text="Import Sequence (.mid + .scl files)"
+            handleOnclick={() => { document.getElementById('import_files')?.click(); }}
+            active={false}
+            svgViewBox="0 0 24 24"
+            svg_path_d="m19.949,5.536l-3.484-3.486c-1.323-1.322-3.081-2.05-4.95-2.05h-4.515C4.243,0,2,2.243,2,5v6c0,.552.447,1,1,1s1-.448,1-1v-6c0-1.654,1.346-3,3-3h4.515c.163,0,.325.008.485.023v4.977c0,1.654,1.346,3,3,3h4.977c.015.16.023.322.023.485v8.515c0,1.654-1.346,3-3,3H7c-1.654,0-3-1.346-3-3,0-.552-.447-1-1-1s-1,.448-1,1c0,2.757,2.243,5,5,5h10c2.757,0,5-2.243,5-5v-8.515c0-1.871-.729-3.628-2.051-4.95Zm-4.949,2.464c-.552,0-1-.449-1-1V2.659c.38.218.733.487,1.051.805l3.484,3.486c.318.317.587.67.805,1.05h-4.341Zm-4.602,8H1c-.553,0-1-.448-1-1s.447-1,1-1h9.398l-1.293-1.293c-.391-.391-.391-1.024,0-1.414.391-.391,1.023-.391,1.414,0l1.613,1.614c1.154,1.154,1.154,3.032,0,4.187l-1.613,1.614c-.195.195-.451.293-.707.293s-.512-.098-.707-.293c-.391-.39-.391-1.023,0-1.414l1.293-1.293Z"
+        />
+        <input id="import_files" type="file" accept=".mid,.scl" multiple onchange={importSequence} style="display: none;"/>
 
-        <div class = "bottom_panel_button"
-        use:tooltip={{ content: 'Export Sequence' }}
-        onclick={() => { exportSequence(); }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M18.66,20.9c-.41-.37-1.05-.33-1.41,.09-.57,.65-1.39,1.02-2.25,1.02H5c-1.65,0-3-1.35-3-3V5c0-1.65,1.35-3,3-3h4.51c.16,0,.33,0,.49,.02V7c0,1.65,1.35,3,3,3h5.81c.31,0,.6-.14,.79-.39s.25-.56,.18-.86c-.31-1.22-.94-2.33-1.83-3.22l-3.48-3.48c-1.32-1.32-3.08-2.05-4.95-2.05H5C2.24,0,0,2.24,0,5v14c0,2.76,2.24,5,5,5H15c1.43,0,2.8-.62,3.75-1.69,.37-.41,.33-1.05-.09-1.41ZM12,2.66c.38,.22,.73,.49,1.05,.81l3.48,3.48c.31,.31,.58,.67,.8,1.05h-4.34c-.55,0-1-.45-1-1V2.66Zm11.13,15.43l-1.61,1.61c-.2,.2-.45,.29-.71,.29s-.51-.1-.71-.29c-.39-.39-.39-1.02,0-1.41l1.29-1.29h-7.4c-.55,0-1-.45-1-1s.45-1,1-1h7.4l-1.29-1.29c-.39-.39-.39-1.02,0-1.41s1.02-.39,1.41,0l1.61,1.61c1.15,1.15,1.15,3.03,0,4.19Z"></path>
-            </svg>
-        </div>
+        <PanelButton
+            tooltip_text="Export Sequence"
+            handleOnclick={exportSequence}
+            active={false}
+            svgViewBox="0 0 24 24"
+            svg_path_d="M18.66,20.9c-.41-.37-1.05-.33-1.41,.09-.57,.65-1.39,1.02-2.25,1.02H5c-1.65,0-3-1.35-3-3V5c0-1.65,1.35-3,3-3h4.51c.16,0,.33,0,.49,.02V7c0,1.65,1.35,3,3,3h5.81c.31,0,.6-.14,.79-.39s.25-.56,.18-.86c-.31-1.22-.94-2.33-1.83-3.22l-3.48-3.48c-1.32-1.32-3.08-2.05-4.95-2.05H5C2.24,0,0,2.24,0,5v14c0,2.76,2.24,5,5,5H15c1.43,0,2.8-.62,3.75-1.69,.37-.41,.33-1.05-.09-1.41ZM12,2.66c.38,.22,.73,.49,1.05,.81l3.48,3.48c.31,.31,.58,.67,.8,1.05h-4.34c-.55,0-1-.45-1-1V2.66Zm11.13,15.43l-1.61,1.61c-.2,.2-.45,.29-.71,.29s-.51-.1-.71-.29c-.39-.39-.39-1.02,0-1.41l1.29-1.29h-7.4c-.55,0-1-.45-1-1s.45-1,1-1h7.4l-1.29-1.29c-.39-.39-.39-1.02,0-1.41s1.02-.39,1.41,0l1.61,1.61c1.15,1.15,1.15,3.03,0,4.19Z"
+        />
 
         <span class="vertical_separator"></span>
 
@@ -1182,21 +1125,6 @@
         margin-right: -10px;
     }
 
-    #timeline {
-        height: 28px;
-        display: flex;
-        flex-wrap: nowrap;
-    }
-
-    .measure {
-        flex-shrink: 0;
-        text-align: left;
-        padding-left: 10px;
-        box-sizing: border-box;
-        border: 2px solid var(--very-dark);
-        cursor: pointer;
-    }
-
     #keyboard_and_panel_wrapper {
         display: flex;
     }
@@ -1235,18 +1163,9 @@
         box-sizing: border-box;
     }
 
-    .bottom_panel_button {
-        cursor: pointer;
-        margin-right: 15px;
-    }
-
     .bottom_panel_element {
         margin-right: 15px;
         user-select: none;
-    }
-
-    .active_button {
-        fill: var(--green);
     }
 
     .vertical_separator {
@@ -1296,55 +1215,5 @@
     #velocity_input {
         accent-color: var(--light);
         width: 100px;
-    }
-
-    #new_keys_settings_dropdown {
-        position: absolute;
-        top: calc(100vh - 153px);
-        left: 120px;
-        background-color: var(--light);
-        border: 1px solid #ccc;
-        padding: 5px;
-        border-radius: 5px;
-        display: flex;
-        flex-direction: column;
-    }
-
-    #keys_setting_input {
-        color: var(--very-dark);
-        border-radius: 5px;
-        background-color: var(--very-light);
-        height: 24px;
-        width: 50px;
-        padding-left: 5px;
-    }
-
-    #alpha_input {
-        margin-left: 5px;
-        width: 150px;
-        accent-color: var(--background-dark);
-    }
-
-    .gear {
-        position: absolute;
-        top: 90px;
-        left: 150px;
-        width: 40px;
-        height: 40px;
-        border: 8px solid var(--light);
-        border-top: 8px solid var(--background-medium);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        display: inline-block;
-        visibility: hidden;
-    }
-
-    .gear.visible {
-        visibility: visible;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
     }
 </style>
