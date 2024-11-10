@@ -72,7 +72,7 @@ const instrumentsSources: {[key: string]: InstrumentSource} = {
             'G5': 'G5.mp3',
             'G6': 'G6.mp3'
         },
-        baseUrl: '/src/lib/samples/violin/',
+        baseUrl: '/samples/violin/',
         release: 1
     },
 
@@ -116,7 +116,7 @@ const instrumentsSources: {[key: string]: InstrumentSource} = {
             'F2': 'F2.mp3',
             'F3': 'F3.mp3'
         },
-        baseUrl: '/src/lib/samples/guitar-acoustic/',
+        baseUrl: '/samples/guitar-acoustic/',
         release: 1
     },
 
@@ -124,7 +124,7 @@ const instrumentsSources: {[key: string]: InstrumentSource} = {
         urls: {
             'F#4': 'thin-cowbell-hit-phonk-fall_155bpm_G_minor.wav',
         },
-        baseUrl: '/src/lib/samples/cowbell/',
+        baseUrl: '/samples/cowbell/',
         release: 1
     },
 }
