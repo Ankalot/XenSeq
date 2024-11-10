@@ -14,11 +14,11 @@
     import NewKeysButton from './new_keys_button.svelte';
     import LoadingIndicator from './loading_indicator.svelte';
 
+    import { instrumentSampler } from '$lib/Instrument';
+
 
     // TODO:
-    // 2) FIX LONG PAGE LOADING
-    // 3) add several instruments: electric guitar, acoustic guitar, some cool synth, phonk cowbell
-    // 4) add pitch memory 
+    // 1) add pitch memory
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -385,6 +385,7 @@
             if (event.key >= '0' && event.key <= '9' || event.key === ".") {
                 entered_number += event.key;
                 showEnteredNumber();
+                return;
             }
 
             if (event.key === "Enter") {
@@ -406,7 +407,6 @@
             if (event.key === "Backspace") {
                 entered_number = entered_number.slice(0, -1);
             }
-            return;
         }
 
         // play a key if in "keys from notes" mode
@@ -619,6 +619,7 @@
         }
     }
 
+    let currentInstrument = $state('piano');
 
     let isPlaying = $state(false);
     let timelineValue = $state(0);
@@ -628,6 +629,16 @@
     let volume = $state(0.7);
 
     let sampler_extra: Tone.Sampler;
+
+    function updateSamplers() {
+        if (sampler) sampler.unsync();
+        sampler = instrumentSampler(currentInstrument);
+        sampler.connect(vol);
+        sampler.sync();
+        if (sampler_extra) sampler_extra.releaseAll();
+        sampler_extra = instrumentSampler(currentInstrument);
+        sampler_extra.connect(vol);
+    }
 
     function notesToSampler() {
         sampler.unsync(); // unsync-sync deletes triggerAttackRelease
@@ -646,30 +657,9 @@
         // this is necessary so that the components from the top panel fit correctly
         handleScroll(); 
 
-        // create sampler
-        const urls: any = {};
-        for (let i = 1; i <= 7; i++) {
-            urls[`C${i}`] = `C${i}.mp3`;
-            urls[`D#${i}`] = `Ds${i}.mp3`;
-            urls[`F#${i}`] = `Fs${i}.mp3`;
-            urls[`A${i}`] = `A${i}.mp3`;
-        }
-        sampler = new Tone.Sampler({
-            urls: urls,
-            release: 2,
-            baseUrl: "https://tonejs.github.io/audio/salamander/",
-        });
+        // init samplers
         vol = new Tone.Volume(20 * Math.log10(volume)).toDestination();
-        sampler.connect(vol);
-        sampler.sync();
-
-        // extra sampler for playing notes from pressing keys manually
-        sampler_extra = new Tone.Sampler({
-            urls: urls,
-            release: 2,
-            baseUrl: "https://tonejs.github.io/audio/salamander/",
-        });
-        sampler_extra.connect(vol);
+        updateSamplers();
 
         // move timeline slider
         Tone.getTransport().scheduleRepeat((time) => {
@@ -1073,6 +1063,19 @@
             <h>Volume:</h>
             <input id="volume_input" type="range" min="0" max="1" bind:value={volume} step=".01" 
             oninput={() => vol.volume.value = 20 * Math.log10(volume)}/>
+        </div>
+
+        <span class="vertical_separator"></span>
+
+        <div class = "bottom_panel_element">
+            <h>Instrument:</h>
+            <select id="instrument_select" bind:value={currentInstrument}
+            onchange={updateSamplers} onkeydown={(e) => e.preventDefault()}>
+                <option value={"piano"}>piano</option>
+                <option value={"violin"}>violin</option>
+                <option value={"guitar-acoustic"}>acoustic guitar</option>
+                <option value={"cowbell"}>cowbell</option>
+            </select>
         </div>
     </div>
 </div>
