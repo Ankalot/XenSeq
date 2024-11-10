@@ -29,6 +29,9 @@ onmouseleave={() => new_keys_button_is_hovered = false}>
     </svg>
     {#if new_keys_button_is_hovered}
         <div id="new_keys_settings_dropdown">
+            <h style="color: var(--very-dark); font-size: 16px;">
+                Calculate new keys based on notes in the scale zone
+            </h>
             <div>
                 <h style="color: var(--very-dark);">Min distance between keys in cents:</h>
                 <input 
@@ -62,7 +65,7 @@ onmouseleave={() => new_keys_button_is_hovered = false}>
 <style>
     #new_keys_settings_dropdown {
         position: absolute;
-        top: calc(100vh - 153px);
+        top: calc(100vh - 175px);
         left: 120px;
         background-color: var(--light);
         border: 1px solid #ccc;

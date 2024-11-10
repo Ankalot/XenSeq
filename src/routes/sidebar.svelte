@@ -17,10 +17,12 @@
         8. Click Middle Mouse Wheel on a note (it will become selected) to change velocity of selected note(-s). </p>
         
     <h1 style="text-align: center; margin-bottom: 10px; margin-top: 10px">OTHER</h1>
-    <p> 1. Use Ctrl+Scroll to zoom in/out. </p>
-    <p> 2. Use Spacebar to play/stop. </p>
-    <p> 3. Press "Z", "X", "C", ..., "A", "S", "D", ..., "Q", "W", "E", ... buttons while in "Define keys" mode to play notes. </p>
-    <p> 4. Click on cents of the notes on the left panel to play them. </p>
+    <p style="color: var(--green)">
+        1. Scale zone is a range slider above the timeline. </p>
+    <p> 2. Use Ctrl+Scroll to zoom in/out. </p>
+    <p> 3. Use Spacebar to play/stop. </p>
+    <p> 4. Press "Z", "X", "C", ..., "A", "S", "D", ..., "Q", "W", "E", ... buttons while in "Define keys" mode to play notes. </p>
+    <p> 5. Click on cents of the notes on the left panel to play them. </p>
 </aside>
 
 

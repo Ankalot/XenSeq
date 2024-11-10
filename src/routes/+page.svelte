@@ -372,6 +372,7 @@
         if (event.ctrlKey && event.code == "KeyA") {
             event.preventDefault();
             notes.forEach(note => note.selected = true);
+            return;
         }
 
         if (event.code == "Space") {
@@ -405,6 +406,7 @@
             if (event.key === "Backspace") {
                 entered_number = entered_number.slice(0, -1);
             }
+            return;
         }
 
         // play a key if in "keys from notes" mode
