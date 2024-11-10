@@ -631,7 +631,7 @@
     let sampler_extra: Tone.Sampler;
 
     function updateSamplers() {
-        if (sampler) sampler.unsync();
+        if (sampler) {sampler.releaseAll(); sampler.unsync()};
         sampler = instrumentSampler(currentInstrument);
         sampler.connect(vol);
         sampler.sync();
