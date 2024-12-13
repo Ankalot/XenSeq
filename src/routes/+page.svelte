@@ -13,12 +13,15 @@
     import PanelButton from './panel_button.svelte';
     import NewKeysButton from './new_keys_button.svelte';
     import LoadingIndicator from './loading_indicator.svelte';
+    import PitchMemoryButton from './pitch_memory_button.svelte';
+    import NoteMemoryTraceLine from './note_memory_trace_line.svelte'
 
     import { instrumentSampler } from '$lib/Instrument';
+    import { findNotesMemoryTraces } from '$lib/Pitch_Memory_v2';
 
 
     // TODO:
-    // 1) add pitch memory
+    // 1) add generation of new keys based on notes' traces at the end of the scale zone
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -619,6 +622,26 @@
         }
     }
 
+
+    let show_notes_memory_traces = $state(false);
+    let pitch_memory_perc = $state(30);
+
+    type NoteMemoryTrace = {
+        time: number;
+        duration: number;
+        octave: number;
+        cents: number;
+    }
+    let notesMemoryTraces: NoteMemoryTrace[] = $derived(
+        findNotesMemoryTraces(
+            notes.filter(note => (time2x(note.time + note.duration) > scale_zone_factor*scale_zone_range[0]
+                         && time2x(note.time) < scale_zone_factor*scale_zone_range[1])),
+            x2time(scale_zone_factor*scale_zone_range[1]),
+            pitch_memory_perc
+        )
+    );
+
+
     let currentInstrument = $state('piano');
 
     let isPlaying = $state(false);
@@ -923,6 +946,16 @@
                         />
                     {/each}
 
+                    {#if show_notes_memory_traces}
+                        {#each notesMemoryTraces as {time, duration, octave, cents}, index}
+                            <NoteMemoryTraceLine
+                                x_px={time2x(time)}
+                                length_px={time2x(duration)}
+                                y_px={cents2y(cents, octave)}
+                            />
+                        {/each}
+                    {/if}
+
                     {#if isPlaying}
                         <line
                         x1={seconds2measures(timelineValue)*measure_width_px} 
@@ -959,6 +992,11 @@
             active={scale_zone_cents_active}
             svgViewBox="0 0 20 20"
             svg_path_d="M18-.0004c1.104 0 2 .896 2 2v16c0 1.0004-.896 2-2 2H2c-1.104 0-2-.895-2-2v-16c0-1.104.896-2 2-2h16m-16 3v2.201l3.272-3.201H3c-.552 0-1 .448-1 1Zm0 5.03v2.828l8.929-8.858h-2.828l-6.101 6.03Zm0 5.657v2.828l14.586-14.515h-2.829L2 13.6866Zm16 3.313v-2.343l-3.272 3.343H17c.552 0 1-.447 1-1Zm0-5.171v-2.829l-8.929 9h2.828l6.101-6.171Zm0-5.657v-2.828l-14.586 14.656h2.829L18 6.1716Z"
+        />
+
+        <PitchMemoryButton
+            bind:perc={pitch_memory_perc}
+            bind:show_notes_memory_traces={show_notes_memory_traces}
         />
 
         <span class="vertical_separator"></span>

@@ -31,6 +31,7 @@
 		"build": "^0.1.4",
 		"fraction.js": "^5.1.1",
 		"mathjs": "^13.2.0",
+		"percentile": "^1.6.0",
 		"tippy": "^0.0.0",
 		"tippy.js": "^6.3.7",
 		"tone": "^15.0.4",
