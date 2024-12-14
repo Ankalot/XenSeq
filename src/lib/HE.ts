@@ -1,4 +1,5 @@
-import { HE_arr } from "./HE_var1";
+//import { HE_arr } from "./HE_var1";
+import { HE_arr } from "./HE_var2";
 
 
 export function HE(x: number): number {

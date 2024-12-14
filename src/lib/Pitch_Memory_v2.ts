@@ -1,7 +1,7 @@
 // taken from ./src/Pitch_Memory_v2.ipynb in `research` branch
 
-import { createUnit } from "mathjs";
-import { HE_arr } from "./HE_var1";
+//import { HE_arr } from "./HE_var1";
+import { HE_arr } from "./HE_var2";
 import percentile from "percentile";
 
 
