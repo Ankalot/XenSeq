@@ -21,7 +21,7 @@
 
 
     // TODO:
-    // 1) upgrade pitch memory model
+    // 1) upgrade pitch memory model: try Harmonic Min-Entropy?
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;

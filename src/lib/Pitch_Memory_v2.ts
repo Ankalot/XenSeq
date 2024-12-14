@@ -45,7 +45,7 @@ export function findNotesMemoryTraces(notes: Note[],
                 //if (Math.abs((note.octave*1200+note.cents) - (otherNote.octave*1200+otherNote.cents)) <= 1200) {// EXPERIMENTAL
                     if ((otherNote.time + otherNote.duration > note.time + note.duration) && 
                         (otherNote.time < (note.time + noteMemoryTraceDuration))) {
-                        if (HE_arr[Math.min(Math.round(Math.abs(note.cents - otherNote.cents)%1200),
+                        if (HE_arr[Math.min(Math.round(Math.abs((note.octave*1200+note.cents) - (otherNote.octave*1200+otherNote.cents))%1200),
                                             HE_arr.length-1)] > criterion) {
                             noteMemoryTraceDuration = Math.max(noteMemoryTraceMinDuration, otherNote.time - note.time)
                         }
