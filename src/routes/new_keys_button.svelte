@@ -4,9 +4,9 @@
         numNewKeys = $bindable(),
         alpha = $bindable(),
         new_keys_active = $bindable(),
-        scale_zone_cents_active = $bindable()
+        scale_zone_cents_active = $bindable(),
+        use_pitch_memory = $bindable()
     } = $props();
-
 
     let new_keys_button_is_hovered = $state(false);
 </script>
@@ -29,9 +29,19 @@ onmouseleave={() => new_keys_button_is_hovered = false}>
     </svg>
     {#if new_keys_button_is_hovered}
         <div id="new_keys_settings_dropdown">
-            <h style="color: var(--very-dark); font-size: 16px;">
-                Calculate new keys based on notes in the scale zone
+            <h style="color: var(--very-dark)">
+                Calculate new keys based on:
             </h>
+            <div style="text-align: right;">
+                <div style="color: var(--very-dark); font-size: 16px;">
+                    notes in the scale zone
+                    <input type="radio" bind:group={use_pitch_memory} value={false}>
+                </div>
+                <div style="color: var(--very-dark); font-size: 16px;">
+                    pitch memory at the end of the scale zone
+                    <input type="radio" bind:group={use_pitch_memory} value={true}>
+                </div>
+            </div>
             <div>
                 <h style="color: var(--very-dark);">Min distance between keys in cents:</h>
                 <input 
@@ -65,8 +75,8 @@ onmouseleave={() => new_keys_button_is_hovered = false}>
 <style>
     #new_keys_settings_dropdown {
         position: absolute;
-        top: calc(100vh - 175px);
-        left: 120px;
+        top: calc(100vh - 230px);
+        left: 150px;
         background-color: var(--light);
         border: 1px solid #ccc;
         padding: 5px;

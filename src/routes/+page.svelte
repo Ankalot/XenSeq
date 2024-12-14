@@ -21,7 +21,7 @@
 
 
     // TODO:
-    // 1) add generation of new keys based on notes' traces at the end of the scale zone
+    // 1) upgrade pitch memory model
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -101,6 +101,7 @@
 
     let keys_from_notes_active = $state(false);
     let new_keys_active = $state(false);
+    let new_keys_use_pitch_memory = $state(true);
 
     // keys when new_keys_active 
     let new_keys: number[] = $state([]);
@@ -140,9 +141,19 @@
             new_keys = event.data;
         };
 
+        let basic_keys: number[];
+        if (new_keys_use_pitch_memory) {
+            basic_keys = notesMemoryTraces
+                .filter(nmt => (time2x(nmt.time + nmt.duration + 0.001) >= scale_zone_factor*scale_zone_range[1]))
+                .map(item => item.cents).sort((a, b) => a - b)
+        } else {
+            basic_keys = $state.snapshot(keys_from_notes);
+        }
+
         worker_newKeys.postMessage({
             new_keys_active: $state.snapshot(new_keys_active),
-            keys_from_notes: $state.snapshot(keys_from_notes),
+            use_pitch_memory: $state.snapshot(new_keys_use_pitch_memory),
+            basic_keys: basic_keys,
             notes: $state.snapshot(notes),
             alpha: $state.snapshot(alpha),
             dCents: $state.snapshot(dCents),
@@ -1021,6 +1032,7 @@
             bind:dCents={dCents}
             bind:numNewKeys={numNewKeys}
             bind:alpha={alpha}
+            bind:use_pitch_memory={new_keys_use_pitch_memory}
         />
 
         <span class="vertical_separator"></span>

@@ -15,7 +15,8 @@ type Note = {
 
 function calcNewKeys(
         new_keys_active: boolean,
-        keys_from_notes: number[],
+        use_pitch_memory: boolean,
+        basic_keys: number[],
         notes: Note[],
         alpha: number,
         dCents: number,
@@ -24,20 +25,25 @@ function calcNewKeys(
 
     let new_keys: number[] = [];
 
-    if (new_keys_active && keys_from_notes.length > 0) {
-        const keys_noc = keys_from_notes.map(key => {
-            return notes.filter(note => note.cents === key).length
-        });
+    if (new_keys_active && basic_keys.length > 0) {
+        let keys_noc: number[];
+        if (use_pitch_memory) {
+            keys_noc = new Array(basic_keys.length).fill(1);
+        } else {
+            keys_noc = basic_keys.map(key => {
+                return notes.filter(note => note.cents === key).length
+            });
+        }
 
         const new_keys_potential = Array.from({ length: 1200 }, (_, i) => i);
 
-        const COE_arr = COE_possible_notes(keys_from_notes, keys_noc, new_keys_potential).map(coe => 1 - coe);
-        const SHE_arr = normalize(SHE_possible_notes(keys_from_notes, new_keys_potential));
+        const COE_arr = COE_possible_notes(basic_keys, keys_noc, new_keys_potential).map(coe => 1 - coe);
+        const SHE_arr = normalize(SHE_possible_notes(basic_keys, new_keys_potential));
 
 
         const COE_SHE_arr = interpolateArray(COE_arr, SHE_arr, alpha);
 
-        new_keys = findBestKeys(COE_SHE_arr, dCents, numNewKeys, new_keys_potential, keys_from_notes);
+        new_keys = findBestKeys(COE_SHE_arr, dCents, numNewKeys, new_keys_potential, basic_keys);
     }
 
     return new_keys;
@@ -47,7 +53,8 @@ function calcNewKeys(
 self.onmessage = (event: MessageEvent) => {
     self.postMessage(calcNewKeys(
         event.data.new_keys_active,
-        event.data.keys_from_notes,
+        event.data.use_pitch_memory,
+        event.data.basic_keys,
         event.data.notes,
         event.data.alpha,
         event.data.dCents,

@@ -35,7 +35,6 @@ export function findNotesMemoryTraces(notes: Note[],
     let notesMemoryTraces: NoteMemoryTrace[] = [];
     let criterion = percentile(proc, HE_arr);
     assertIsNumber(criterion);
-    console.log(criterion);
 
     for (let note of notes) {
         let noteMemoryTraceDuration = endTime - note.time;
