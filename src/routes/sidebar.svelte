@@ -13,8 +13,9 @@
     <p> 6. Use Ctrl+A to select all notes. </p>
     <p> 7. Press ArrowUp and ArrowDown to shift note(-s) up or down by a cent. </p>
     <p> 7. Press SHIFT+ArrowUp and SHIFT+ArrowDown to shift note(-s) up or down by an octave. </p>
+    <p> 8. Use Ctrl+C and Ctrl+V to copy selected notes and paste them. </p>
     <p style="color: var(--green)">
-        8. Click Middle Mouse Wheel on a note (it will become selected) to change velocity of selected note(-s). </p>
+        9. Click Middle Mouse Wheel on a note (it will become selected) to change velocity of selected note(-s). </p>
         
     <h1 style="text-align: center; margin-bottom: 10px; margin-top: 10px">OTHER</h1>
     <p style="color: var(--green)">

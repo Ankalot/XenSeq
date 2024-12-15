@@ -350,6 +350,10 @@
     let entered_number = $state('');
     let show_entered_number = $state(false);
     let entered_number_timeout: number | undefined;
+    let show_message = $state(false);
+    let messageText = $state("");
+    let message_timeout: number | undefined;
+    let copiedNotes: Note[] = [];
 
     const keyboardKeys = [
         "KeyZ", "KeyX", "KeyC", "KeyV", "KeyB", "KeyN", "KeyM", "Comma", "Period", "Slash", 
@@ -373,6 +377,21 @@
         }, 3000);
     }
 
+    function fadeMessage() {
+        show_message = false;
+        clearTimeout(message_timeout);
+    }
+
+    function showMessage(messageTextParam: string) {
+        messageText = messageTextParam;
+        show_message = true;
+
+        clearTimeout(message_timeout);
+        message_timeout = window.setTimeout(() => {
+            fadeMessage();
+        }, 2000);
+    }
+
     function handleKeydown(event: KeyboardEvent) {
         if (event.code === "Delete") {
             notes = notes.filter(note => !note.selected);
@@ -388,6 +407,27 @@
             event.preventDefault();
             notes.forEach(note => note.selected = true);
             return;
+        }
+
+        if (event.ctrlKey && event.code == "KeyC") {
+            event.preventDefault();
+            copiedNotes =  $state.snapshot(notes).filter(note => note.selected);
+            if (copiedNotes.length == 1) {
+                showMessage(`1 note copied`);
+            } else {
+                showMessage(`${copiedNotes.length} notes copied`);
+            }      
+        }
+
+        if (event.ctrlKey && event.code == "KeyV") {
+            event.preventDefault();
+            notes.forEach(note => note.selected = false);
+            notes.push(...copiedNotes);
+            if (copiedNotes.length == 1) {
+                showMessage(`1 note pasted`);
+            } else {
+                showMessage(`${copiedNotes.length} notes pasted`);
+            }    
         }
 
         if (event.code == "Space") {
@@ -785,6 +825,10 @@
         max="1"
         step=".01"
     />
+</div>
+
+<div id = "message_wrapper" style="display: {show_message ? "block" : "none"};">
+    <h>{messageText}</h>
 </div>
 
 <svelte:head>
@@ -1264,6 +1308,16 @@
         z-index: 10;
         position: absolute;
         top: 80%;
+        left: 50%;
+        padding: 10px;
+    }
+
+    #message_wrapper {
+        background-color: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        z-index: 10;
+        position: absolute;
+        top: 10%;
         left: 50%;
         padding: 10px;
     }
