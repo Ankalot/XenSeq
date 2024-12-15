@@ -145,6 +145,7 @@
         if (new_keys_use_pitch_memory) {
             basic_keys = notesMemoryTraces
                 .filter(nmt => (time2x(nmt.time + nmt.duration + 0.001) >= scale_zone_factor*scale_zone_range[1]))
+                .filter((obj, index, self) => index === self.findIndex((t) => t.cents === obj.cents))
                 .map(item => item.cents).sort((a, b) => a - b)
         } else {
             basic_keys = $state.snapshot(keys_from_notes);
