@@ -1,38 +1,14 @@
-# create-svelte
-
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
-
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
-```
+## What is this?
+* This is a free pitch (no initial tuning system) piano roll.  
+* The scale zone mechanism and analytics based on harmonic entropy, categorical entropy and short-term pitch memory model allow you to create melodies without knowledge of traditional music theory.
+* Instead of composing in a pre-selected scale, scale is created in parallel with the creation of the melody. Scale zones can flow into each other.
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
+For website development:  
 ```bash
+npm install --force
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+For methods and algorithms development see the `research` branch of this repo.  
