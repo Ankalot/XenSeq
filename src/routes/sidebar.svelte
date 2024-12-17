@@ -4,6 +4,7 @@
 
 
 <aside class="absolute w-full h-full bg-gray-200 shadow-lg" class:open>
+    <a href="https://github.com/Ankalot/XenSeq/">GITHUB</a>
 	<h1 style="text-align: center; margin-bottom: 10px">INTERACTIONS WITH NOTES</h1>
     <p> 1. Click LMB on the panel to create a note. </p>
     <p> 2. Click LMB on a note to select it, click SHIFT+LMB to select several notes. Click ESCAPE to remove selection. </p>
@@ -34,7 +35,7 @@
         text-align: left;
 		right: 0%;
 		transition: opacity 0.2s ease-in-out, visibility 0.2s 0.2s;
-        width: 600px;
+        width: 700px;
         z-index: 100;
         background-color: var(--background-medium);
         padding: 20px;
@@ -48,4 +49,13 @@
         visibility: visible;
         transition: opacity 0.2s ease-in-out;
 	}
+
+    a {
+        position: absolute;
+        right: 25px;
+        color: var(--bluish-light);
+        padding: 5px;
+        border: 3px solid var(--bluish-light);
+        border-radius: 5px;
+    }
 </style>
