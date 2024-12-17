@@ -12,7 +12,8 @@
     <p> 4. You can drag or resize selected note(-s) using LMB. </p>
     <p style="color: var(--green)"> 5. When note(-s) is(are) selected, you can set the number of cents 
         (type math expression, then hit ENTER, or Shift+Enter, Ctrl+Enter to make the number of cents 
-        increase or decrease relative to the current number respectively) </p>
+        increase or decrease relative to the current number respectively). If you want to enter a fraction 
+        rather than a number of cents, then use Alt+Enter, Shift+Alt+Enter, Ctrl+Alt+Enter</p>
     <p> 6. Use Ctrl+A to select all notes. </p>
     <p> 7. Press ArrowUp and ArrowDown to shift note(-s) up or down by a cent. </p>
     <p> 7. Press SHIFT+ArrowUp and SHIFT+ArrowDown to shift note(-s) up or down by an octave. </p>

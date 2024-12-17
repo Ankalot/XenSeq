@@ -21,8 +21,8 @@
 
 
     // TODO:
-    // 1) add Farey sequence visualizer
-    // ...) add ctrl+z 
+    // 0) add selecting notes in area 
+    // 1) add ctrl+z 
     // 2) upgrade pitch memory model
 
     const num_octaves = 6;
@@ -394,6 +394,10 @@
         }, 2000);
     }
 
+    function ratio2cents(ratio: number): number {
+        return 1200*Math.log2(ratio);
+    }
+
     function handleKeydown(event: KeyboardEvent) {
         if (event.code === "Delete") {
             notes = notes.filter(note => !note.selected);
@@ -455,6 +459,9 @@
                     let entered_cents = eval(entered_number);
                     let add_to_curr_cents = event.shiftKey;
                     let sub_from_curr_cents = event.ctrlKey;
+                    if (event.altKey) {
+                        entered_cents = ratio2cents(entered_cents);
+                    }
 
                     if (isFinite(entered_cents)) {
                         notes.forEach(note => {
