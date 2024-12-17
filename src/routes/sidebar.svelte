@@ -9,7 +9,9 @@
     <p> 2. Click LMB on a note to select it, click SHIFT+LMB to select several notes. Click ESCAPE to remove selection. </p>
     <p> 3. Click RMB on a note to delete it. Click DELETE to delete selected note(-s). </p>
     <p> 4. You can drag or resize selected note(-s) using LMB. </p>
-    <p> 5. When note(-s) is(are) selected, you can set the number of cents (use "0-9", ".", BACKSPACE, then hit ENTER) </p>
+    <p style="color: var(--green)"> 5. When note(-s) is(are) selected, you can set the number of cents 
+        (type math expression, then hit ENTER, or Shift+Enter, Ctrl+Enter to make the number of cents 
+        increase or decrease relative to the current number respectively) </p>
     <p> 6. Use Ctrl+A to select all notes. </p>
     <p> 7. Press ArrowUp and ArrowDown to shift note(-s) up or down by a cent. </p>
     <p> 7. Press SHIFT+ArrowUp and SHIFT+ArrowDown to shift note(-s) up or down by an octave. </p>
@@ -32,7 +34,7 @@
         text-align: left;
 		right: 0%;
 		transition: opacity 0.2s ease-in-out, visibility 0.2s 0.2s;
-        width: 500px;
+        width: 600px;
         z-index: 100;
         background-color: var(--background-medium);
         padding: 20px;

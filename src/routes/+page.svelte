@@ -21,7 +21,9 @@
 
 
     // TODO:
-    // 1) upgrade pitch memory model
+    // 1) add Farey sequence visualizer
+    // ...) add ctrl+z 
+    // 2) upgrade pitch memory model
 
     const num_octaves = 6;
     const octave_height_px_no_scale = 300;
@@ -416,7 +418,8 @@
                 showMessage(`1 note copied`);
             } else {
                 showMessage(`${copiedNotes.length} notes copied`);
-            }      
+            }
+            return
         }
 
         if (event.ctrlKey && event.code == "KeyV") {
@@ -427,7 +430,8 @@
                 showMessage(`1 note pasted`);
             } else {
                 showMessage(`${copiedNotes.length} notes pasted`);
-            }    
+            }
+            return    
         }
 
         if (event.code == "Space") {
@@ -437,25 +441,52 @@
 
         // set cents of selected note(-s)
         if (notes.some(note => note.selected)) {
-            if (event.key >= '0' && event.key <= '9' || event.key === ".") {
+            if (event.key >= '0' && event.key <= '9' || event.key == "." || 
+                event.key == "*" || event.key == "/" || event.key == "(" ||
+                event.key == ")" || event.key == "+" || event.key == "-"
+            ) {
                 entered_number += event.key;
                 showEnteredNumber();
                 return;
             }
 
             if (event.key === "Enter") {
-                const cents = Number(entered_number)
-                if (isFinite(cents)) {
-                    notes.forEach(note => {
-                        if (note.selected) {
-                            note.cents = cents % 1200;
-                            note.octave += Math.floor(cents/1200);
-                            if (note.octave > num_octaves - 1) {
-                                note.octave = num_octaves - 1;
+                try {
+                    let entered_cents = eval(entered_number);
+                    let add_to_curr_cents = event.shiftKey;
+                    let sub_from_curr_cents = event.ctrlKey;
+
+                    if (isFinite(entered_cents)) {
+                        notes.forEach(note => {
+                            let new_cents = entered_cents
+                            if (add_to_curr_cents) {
+                                new_cents = note.cents + new_cents;
                             }
-                        }
-                    })
-                }
+                            if (sub_from_curr_cents) {
+                                new_cents = note.cents - new_cents;
+                            }
+
+                            if (new_cents >= 0) {
+                                if (note.selected) {
+                                    note.cents = new_cents % 1200;
+                                    note.octave += Math.floor(new_cents/1200);
+                                    if (note.octave > num_octaves - 1) {
+                                        note.octave = num_octaves - 1;
+                                    }
+                                }
+                            } else {
+                                if (note.selected) {
+                                    note.cents = 1200 - (-new_cents % 1200);
+                                    note.octave -= 1+Math.floor(-new_cents/1200);
+                                    if (note.octave < 0) {
+                                        note.octave = 0;
+                                    }
+                                }
+                            }
+                        })
+                    }
+                } catch (error) {}
+
                 fadeEnteredNumber();
             }
 
