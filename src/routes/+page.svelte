@@ -21,8 +21,7 @@
 
 
     // TODO:
-    // 0) add selecting notes in area 
-    // 1) add ctrl+z 
+    // 1) add selecting notes in area 
     // 2) upgrade pitch memory model
 
     const num_octaves = 6;
@@ -55,6 +54,31 @@
         selected: boolean
     }
     let notes: Note[] = $state([]);
+    
+    let maxNotesSnapshotsNum = 20;
+    let notesSnapshots: Note[][] = [];
+    
+    function removeNotesSnapshot() {
+        //console.log("remove");
+        notesSnapshots.pop();
+    }
+
+    function createNotesSnapshot() {
+        //console.log("create");
+        if (notesSnapshots.length == maxNotesSnapshotsNum) {
+            notesSnapshots.splice(0, 1);
+        }
+        notesSnapshots.push($state.snapshot(notes));
+    }
+
+    function restoreSnapshot() {
+        //console.log("restore");
+        let prevSnapshot = notesSnapshots.pop();
+        if (prevSnapshot) {
+            notes = prevSnapshot;
+            //notes.forEach(note => note.selected = false);
+        }
+    }
 
     function cents2y(cents: number, octave?: number): number {
         if (octave !== undefined) {
@@ -223,10 +247,12 @@
                 const cents_y = y2cents(y);
                 const cents_key = closestValue(keys, cents_y);
                 const octave = y2octave(y);
+                createNotesSnapshot();
                 notes.push({octave: octave, cents: cents_key, time: x2time(x),
                              duration: default_note_duration, velocity: default_note_velocity,
                              selected: false});
             } else {
+                createNotesSnapshot();
                 notes.push({octave: y2octave(y), cents: y2cents(y), time: x2time(x),
                              duration: default_note_duration, velocity: default_note_velocity,
                              selected: false});
@@ -235,6 +261,7 @@
     }
 
     function removeNote(i: number) {
+        createNotesSnapshot();
         notes.splice(i, 1);
     }
 
@@ -249,6 +276,8 @@
 
 
     function startNoteDragging(i: number, x: number, y: number) {
+        createNotesSnapshot();
+        const x_step = measure_width_px/(divisions_of_beat*beats_per_measure);
         const selectedNotes = notes.filter(note => note.selected);
         
         function mouseMoveHandler(moveEvent: MouseEvent) {
@@ -284,10 +313,15 @@
         function mouseUpHandler() {
             if (snap_notes_to_grid_active) {
                 selectedNotes.forEach(note => {
-                    const x_step = measure_width_px/(divisions_of_beat*beats_per_measure);
                     note.time = x2time(Math.round(time2x(note.time)/x_step)*x_step);
                 });
             }
+
+            if (JSON.stringify(notesSnapshots[notesSnapshots.length-1]) == 
+                    JSON.stringify($state.snapshot(notes))) {
+                removeNotesSnapshot();
+            }
+
             window.removeEventListener('mousemove', mouseMoveHandler);
             window.removeEventListener('mouseup', mouseUpHandler);
         }
@@ -297,7 +331,8 @@
     }
 
 
-    function startNoteResizing(i: number, x: number) {       
+    function startNoteResizing(i: number, x: number) {   
+        createNotesSnapshot();    
         const selectedNotes = notes.filter(note => note.selected);
         
         function mouseMoveHandler(moveEvent: MouseEvent) {
@@ -322,6 +357,12 @@
                     default_note_duration = note.duration;
                 });
             }
+
+            if (JSON.stringify(notesSnapshots[notesSnapshots.length-1]) == 
+                    JSON.stringify($state.snapshot(notes))) {
+                removeNotesSnapshot();
+            }
+
             window.removeEventListener('mousemove', mouseMoveHandler);
             window.removeEventListener('mouseup', mouseUpHandler);
         }
@@ -330,14 +371,20 @@
         window.addEventListener('mouseup', mouseUpHandler);
     }
 
+    let changedNoteVelocity = false;
 
     function changeNoteVelocity(index: number) {
+        changedNoteVelocity = false;
         show_velocity_input = !show_velocity_input;
         velocity_input = notes[index].velocity;
         notes[index].selected = true;
     }
 
     function onInputVelocityInput() {
+        if (!changedNoteVelocity) {
+            createNotesSnapshot();
+            changedNoteVelocity = true;
+        }
         notes.filter(note => note.selected).forEach(note => {
             note.velocity = velocity_input;
         });
@@ -400,6 +447,7 @@
 
     function handleKeydown(event: KeyboardEvent) {
         if (event.code === "Delete") {
+            createNotesSnapshot();
             notes = notes.filter(note => !note.selected);
         } 
         
@@ -427,6 +475,7 @@
         }
 
         if (event.ctrlKey && event.code == "KeyV") {
+            createNotesSnapshot();
             event.preventDefault();
             notes.forEach(note => note.selected = false);
             notes.push(...copiedNotes);
@@ -457,6 +506,7 @@
             if (event.key === "Enter") {
                 try {
                     let entered_cents = eval(entered_number);
+                    createNotesSnapshot();
                     let add_to_curr_cents = event.shiftKey;
                     let sub_from_curr_cents = event.ctrlKey;
                     if (event.altKey) {
@@ -502,6 +552,12 @@
             }
         }
 
+        if (event.ctrlKey && event.code == "KeyZ") {
+            event.preventDefault();
+            restoreSnapshot();
+            return
+        }
+
         // play a key if in "keys from notes" mode
         if ((keys_from_notes_active || new_keys_active) && keyboardKeys.includes(event.code)) {
             const keyInd = keyboardKeys.indexOf(event.code);
@@ -520,6 +576,7 @@
         if (event.code === "ArrowUp") {
             event.preventDefault();
             if (event.shiftKey) {
+                createNotesSnapshot();
                 notes.filter(note => note.selected).forEach(note => {
                     if (note.octave < num_octaves - 1) {
                         note.octave += 1;
@@ -541,6 +598,7 @@
         if (event.code === "ArrowDown") {
             event.preventDefault();
             if (event.shiftKey) {
+                createNotesSnapshot();
                 notes.filter(note => note.selected).forEach(note => {
                     if (note.octave > 0) {
                         note.octave -= 1;

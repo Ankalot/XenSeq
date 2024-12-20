@@ -28,6 +28,7 @@
     <p> 3. Use Spacebar to play/stop. </p>
     <p> 4. Press "Z", "X", "C", ..., "A", "S", "D", ..., "Q", "W", "E", ... buttons while in "Define keys" mode to play notes. </p>
     <p> 5. Click on cents of the notes on the left panel to play them. </p>
+    <p> 6. Use Ctrl+Z to reverse last change. </p>
 </aside>
 
 
