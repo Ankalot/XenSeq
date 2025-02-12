@@ -1266,6 +1266,7 @@
                 <option value={"violin"}>violin</option>
                 <option value={"guitar-acoustic"}>acoustic guitar</option>
                 <option value={"cowbell"}>cowbell</option>
+                <option value={"harpsichord"}>harpsichord</option>
             </select>
         </div>
     </div>
